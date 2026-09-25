@@ -2,14 +2,19 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import HeroVisual from "./HeroVisual";
+import { ArrowIcon } from "./Icons";
+import { START_PROJECT_HREF } from "../../lib/contact";
 
 import {
   SMS_CONSENT_COPY,
   validateSignup,
   type SignupErrors,
 } from "../../lib/subscribers";
-import { DEFAULT_COUNTRY, type Country } from "../../lib/countries";
+import {
+  buildFullPhone,
+  DEFAULT_COUNTRY,
+  type Country,
+} from "../../lib/countries";
 import PhoneField from "./PhoneField";
 
 type ChannelStatus = "sent" | "skipped" | "failed";
@@ -34,24 +39,6 @@ type Confirmation = {
 };
 
 const EMPTY_FORM = { name: "", email: "", phone: "" };
-
-/* Combine the selected country dial code with the locally-entered number
-   into the full international value the existing backend expects
-   (e.g. "+63" + "917 555 0123" -> "+639175550123"). Avoids duplicating
-   the dial code when the user pastes a full international number. */
-function buildFullPhone(dial: string, local: string) {
-  const trimmed = local.trim();
-  if (!trimmed) return "";
-  // User pasted a full international number — keep it as-is.
-  if (trimmed.startsWith("+")) return trimmed;
-  const digits = trimmed.replace(/[^\d]/g, "");
-  const dialDigits = dial.replace("+", "");
-  // User included the dial code without "+" (e.g. "63917...").
-  if (digits.startsWith(dialDigits)) return `+${digits}`;
-  // Strip domestic trunk zero ("0917..." -> "917...") before prefixing.
-  const withoutTrunk = digits.replace(/^0+/, "");
-  return `${dial} ${withoutTrunk}`;
-}
 
 export default function SignupForm() {
   const [form, setForm] = useState(EMPTY_FORM);
@@ -145,369 +132,127 @@ export default function SignupForm() {
     setConfirmation(null);
   }
 
+
+  if (confirmation) {
+    return <Confirmation confirmation={confirmation} onReset={reset} />;
+  }
+
   return (
-    <main className="min-h-screen bg-[#fdfdfc] font-sans text-[#0a0a0a] antialiased">
-      {/* HEADER — clean SaaS horizontal header with subtle bottom border and neon green status dot */}
-      <header className="border-b border-zinc-200/80 bg-white/70 backdrop-blur-md sticky top-0 z-30">
-        <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between px-5 py-4 sm:px-8 lg:px-12">
-          <Logo />
+    <form className="space-y-4" onSubmit={submit} noValidate>
+      <p className="text-[14px] font-medium text-zinc-600">
+        Add an email address, a mobile number, or both.
+      </p>
 
-          <div className="flex items-center gap-3">
-            <Link
-              href="/app"
-              className="rounded-full bg-[#0a0a0d] px-4 py-2 font-mono text-[10px] font-bold tracking-[0.16em] text-white transition-colors hover:bg-zinc-800"
-            >
-              START YOUR PROJECT →
-            </Link>
-            <div className="hidden items-center gap-2 sm:flex">
-              <span className="h-2 w-2 rounded-full bg-[#a3e635] shadow-[0_0_8px_#a3e635]" />
-              <p className="font-mono text-[10px] font-semibold tracking-[0.24em] text-zinc-900 uppercase">
-                PRODUCT UPDATES
-              </p>
-            </div>
-          </div>
-        </div>
-      </header>
+      <TextField
+        id="subscriber-name"
+        label="Name"
+        type="text"
+        autoComplete="name"
+        value={form.name}
+        placeholder="Alex"
+        error={errors.name}
+        onChange={(value) => update("name", value)}
+      />
 
-      {/* MAIN TWO-COLUMN SaaS HERO */}
-      <section className="mx-auto w-full max-w-[1440px] px-5 pb-16 pt-8 sm:px-8 sm:pt-12 lg:px-12 lg:pb-24 lg:pt-14">
-        <div className="grid grid-cols-1 items-start gap-12 lg:grid-cols-12 lg:gap-10 xl:gap-16">
-          {/* LEFT SIDE: ~43% (5 cols on lg) */}
-          <div className="dcl-rise flex flex-col lg:col-span-5">
-            <div>
-              <StatusPill />
-            </div>
+      <TextField
+        id="subscriber-email"
+        label="Email"
+        type="email"
+        inputMode="email"
+        autoComplete="email"
+        value={form.email}
+        placeholder="you@brand.com"
+        error={errors.email}
+        onChange={(value) => update("email", value)}
+      />
 
-            <h1 className="mt-5 font-sans text-[44px] font-extrabold leading-[1.02] tracking-[-0.035em] text-zinc-950 sm:text-[56px] lg:text-[62px]">
-              GET PRODUCT
-              <br />
-              UPDATES <span className="text-[#a3e635]">FIRST.</span>
-            </h1>
+      {/* Mobile Input — country selector + local number */}
+      <PhoneField
+        country={country}
+        localPhone={localPhone}
+        error={errors.phone}
+        onLocalChange={(value) => update("phone", value)}
+        onSelectCountry={selectCountry}
+        onClearError={() =>
+          setErrors((current) =>
+            current.phone ? { ...current, phone: undefined } : current
+          )
+        }
+      />
 
-            <p className="mt-4 max-w-[460px] text-[15px] leading-relaxed text-zinc-600 sm:text-[16px]">
-              Early access, new packaging drops and DICI feature releases from
-              DYE CUT LAB — straight to your inbox or phone.
-            </p>
+      <p
+        id="subscriber-sms-consent"
+        className="text-[12px] leading-relaxed text-zinc-600"
+      >
+        {SMS_CONSENT_COPY}
+      </p>
 
-            <BenefitsRow />
+      {(errors.form || formError) && (
+        <p
+          role="alert"
+          className="rounded-2xl border-2 border-red-300 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-700"
+        >
+          {errors.form ?? formError}
+        </p>
+      )}
 
-            {/* Secondary CTA to the DICI chat — sign-up stays primary */}
-            <div className="mt-8 flex flex-col gap-2">
-              <p className="text-[13px] text-zinc-500">
-                Already know what you want to make?
-              </p>
-              <Link
-                href="/app"
-                className="group inline-flex w-fit items-center gap-2 rounded-full border border-zinc-900 bg-white px-5 py-2.5 font-mono text-[10px] font-bold tracking-[0.16em] text-zinc-900 transition-colors hover:bg-black hover:text-white"
-              >
-                <span>START YOUR PROJECT</span>
-                <span aria-hidden="true">→</span>
-              </Link>
-            </div>
+      <button
+        type="submit"
+        disabled={submitting}
+        className="group flex h-14 w-full items-center justify-between rounded-full bg-[#0a0a0a] pl-7 pr-6 text-[16px] font-extrabold text-white transition active:scale-[0.99] hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <span>{submitting ? "Signing up…" : "Get early access"}</span>
+        <ArrowIcon className="h-5 w-5 text-[var(--dcl-lime)] transition-transform group-hover:translate-x-1" />
+      </button>
 
-            {/* Mobile visual position: in mobile, shows right after benefits */}
-            <div className="mt-10 block lg:hidden">
-              <HeroVisual />
-            </div>
-
-            <div className="mt-10">
-              <div className="flex items-center gap-2.5">
-                <span className="h-2 w-2 rounded-full bg-[#a3e635]" />
-                <span className="font-mono text-[10px] font-bold tracking-[0.2em] text-zinc-900 uppercase">
-                  SIGN UP
-                </span>
-                <div className="h-px flex-1 bg-zinc-200" />
-              </div>
-
-              <p className="mt-2 text-[13px] text-zinc-500">
-                Add an email address, a mobile number, or both.
-              </p>
-
-              {confirmation ? (
-                <Confirmation confirmation={confirmation} onReset={reset} />
-              ) : (
-                <form className="mt-6 space-y-4" onSubmit={submit} noValidate>
-
-                  {/* Name Input */}
-                  <div>
-                    <label
-                      htmlFor="subscriber-name"
-                      className="block text-[11px] font-mono tracking-[0.16em] text-zinc-500 uppercase"
-                    >
-                      NAME <span className="text-zinc-400 font-normal">OPTIONAL</span>
-                    </label>
-
-                    <div className="relative mt-1.5 flex items-center">
-                      <span className="pointer-events-none absolute left-3.5 text-zinc-400">
-                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                          <circle cx="12" cy="7" r="4" />
-                        </svg>
-                      </span>
-
-                      <input
-                        id="subscriber-name"
-                        name="name"
-                        type="text"
-                        autoComplete="name"
-                        value={form.name}
-                        onChange={(event) => update("name", event.target.value)}
-                        placeholder="Alex"
-                        aria-invalid={Boolean(errors.name)}
-                        className={`h-12 w-full rounded-2xl border bg-white pl-10 pr-4 text-[14px] text-zinc-900 outline-none transition-all placeholder:text-zinc-400 focus:border-zinc-950 focus:ring-2 focus:ring-zinc-950/5 ${
-                          errors.name
-                            ? "border-red-400 ring-2 ring-red-400/10"
-                            : "border-zinc-200 hover:border-zinc-300"
-                        }`}
-                      />
-                    </div>
-
-                    {errors.name && (
-                      <p className="mt-1.5 text-[11px] text-red-500">{errors.name}</p>
-                    )}
-                  </div>
-
-                  {/* Email Input */}
-                  <div>
-                    <label
-                      htmlFor="subscriber-email"
-                      className="block text-[11px] font-mono tracking-[0.16em] text-zinc-500 uppercase"
-                    >
-                      EMAIL <span className="text-zinc-400 font-normal">OPTIONAL</span>
-                    </label>
-
-                    <div className="relative mt-1.5 flex items-center">
-                      <span className="pointer-events-none absolute left-3.5 text-zinc-400">
-                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                          <polyline points="22,6 12,13 2,6" />
-                        </svg>
-                      </span>
-
-                      <input
-                        id="subscriber-email"
-                        name="email"
-                        type="email"
-                        inputMode="email"
-                        autoComplete="email"
-                        value={form.email}
-                        onChange={(event) => update("email", event.target.value)}
-                        placeholder="you@brand.com"
-                        aria-invalid={Boolean(errors.email)}
-                        className={`h-12 w-full rounded-2xl border bg-white pl-10 pr-4 text-[14px] text-zinc-900 outline-none transition-all placeholder:text-zinc-400 focus:border-zinc-950 focus:ring-2 focus:ring-zinc-950/5 ${
-                          errors.email
-                            ? "border-red-400 ring-2 ring-red-400/10"
-                            : "border-zinc-200 hover:border-zinc-300"
-                        }`}
-                      />
-                    </div>
-
-                    {errors.email && (
-                      <p className="mt-1.5 text-[11px] text-red-500">{errors.email}</p>
-                    )}
-                  </div>
-
-                  {/* Mobile Input — country selector + local number */}
-                  <PhoneField
-                    country={country}
-                    localPhone={localPhone}
-                    error={errors.phone}
-                    onLocalChange={(value) => update("phone", value)}
-                    onSelectCountry={selectCountry}
-                    onClearError={() =>
-                      setErrors((current) =>
-                        current.phone ? { ...current, phone: undefined } : current
-                      )
-                    }
-                  />
-
-
-                  <p id="subscriber-sms-consent" className="mt-1 text-[11px] leading-relaxed text-zinc-500">{SMS_CONSENT_COPY}</p>
-
-                  {(errors.form || formError) && (
-                    <p
-                      role="alert"
-                      className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[11px] leading-4 text-red-600"
-                    >
-                      {errors.form ?? formError}
-                    </p>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="group mt-6 flex h-12 w-full items-center justify-between rounded-full bg-[#0a0a0d] px-6 text-[12px] font-bold tracking-[0.1em] text-white transition-all duration-150 hover:bg-zinc-800 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 shadow-sm"
-                  >
-                    <span>{submitting ? "SIGNING UP..." : "GET EARLY ACCESS"}</span>
-                    <span
-                      className="text-[16px] text-[#a3e635] transition-transform duration-200 group-hover:translate-x-1"
-                      aria-hidden="true"
-                    >
-                      →
-                    </span>
-                  </button>
-
-                  <p className="mt-4 text-[11px] leading-relaxed text-zinc-400 text-center">
-                    We only send the updates you ask for. Unsubscribe any time — reply
-                    STOP to any text, or reply to any email.
-                  </p>
-                </form>
-              )}
-            </div>
-          </div>
-
-          {/* RIGHT SIDE: ~57% (7 cols on lg) — large SaaS Dashboard Preview */}
-          <div className="hidden lg:block lg:col-span-7 lg:sticky lg:top-24">
-            <HeroVisual />
-          </div>
-        </div>
-      </section>
-
-      {/* FOOTER BANNER */}
-      <DarkFooterBanner />
-    </main>
+      <p className="text-center text-[12px] leading-relaxed text-zinc-500">
+        We only send the updates you ask for. Unsubscribe any time — reply STOP
+        to any text, or reply to any email.
+      </p>
+    </form>
   );
 }
 
-/* Same wordmark markup as app/page.tsx — kept local so the DICI flow in
-   app/page.tsx stays untouched. */
-function Logo() {
+function TextField({
+  id,
+  label,
+  value,
+  error,
+  onChange,
+  ...input
+}: {
+  id: string;
+  label: string;
+  value: string;
+  error?: string;
+  onChange: (value: string) => void;
+} & Pick<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  "type" | "inputMode" | "autoComplete" | "placeholder"
+>) {
   return (
-    <div className="text-[20px] font-black leading-[0.8] tracking-[-0.06em]">
-      DYE CUT
-      <br />
-      LAB
+    <div>
+      <label htmlFor={id} className="block text-[13px] font-bold text-zinc-900">
+        {label} <span className="font-medium text-zinc-500">(optional)</span>
+      </label>
+      <input
+        id={id}
+        name={id.replace("subscriber-", "")}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${id}-error` : undefined}
+        {...input}
+        className={`mt-1.5 h-12 w-full rounded-2xl border-2 bg-white px-4 text-[15px] text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-black focus:ring-4 focus:ring-[var(--dcl-lime)]/50 ${
+          error ? "border-red-400" : "border-zinc-300 hover:border-zinc-400"
+        }`}
+      />
+      {error && (
+        <p id={`${id}-error`} className="mt-1.5 text-[12px] font-medium text-red-600">
+          {error}
+        </p>
+      )}
     </div>
-  );
-}
-
-function StatusPill() {
-  return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200/90 bg-white px-3.5 py-1.5 shadow-2xs">
-      <span className="h-2 w-2 rounded-full bg-[#a3e635] shadow-[0_0_8px_#a3e635]" />
-      <span className="font-sans text-[11px] font-bold tracking-tight text-zinc-900">
-        DICI
-      </span>
-      <span className="text-[10px] text-zinc-300" aria-hidden="true">
-        /
-      </span>
-      <span className="font-sans text-[11px] font-semibold tracking-tight text-zinc-500">
-        EARLY ACCESS
-      </span>
-    </div>
-  );
-}
-function BenefitsRow() {
-  return (
-    <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-2">
-      <div className="flex items-center gap-2 text-[12px] font-medium text-zinc-700">
-        <svg className="h-4 w-4 shrink-0 text-zinc-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-          <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-          <line x1="12" y1="22.08" x2="12" y2="12" />
-        </svg>
-        <span className="leading-tight">New Drops First</span>
-      </div>
-
-      <div className="flex items-center gap-2 text-[12px] font-medium text-zinc-700">
-        <svg className="h-4 w-4 shrink-0 text-zinc-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-        </svg>
-        <span className="leading-tight">Feature Releases</span>
-      </div>
-
-      <div className="flex items-center gap-2 text-[12px] font-medium text-zinc-700">
-        <svg className="h-4 w-4 shrink-0 text-zinc-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
-          <line x1="12" y1="18" x2="12.01" y2="18" />
-        </svg>
-        <span className="leading-tight">Inbox & SMS Updates</span>
-      </div>
-
-      <div className="flex items-center gap-2 text-[12px] font-medium text-zinc-700">
-        <svg className="h-4 w-4 shrink-0 text-zinc-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-        </svg>
-        <span className="leading-tight">No Spam, Ever</span>
-      </div>
-    </div>
-  );
-}
-
-function DarkFooterBanner() {
-  return (
-    <footer className="mt-20 border-t border-zinc-900 bg-[#0c0c10] py-12 text-white">
-      <div className="mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-12">
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="flex items-start gap-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-900 border border-zinc-800 text-[#a3e635]">
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-                <line x1="12" y1="22.08" x2="12" y2="12" />
-              </svg>
-            </div>
-            <div>
-              <h4 className="text-xs font-bold tracking-widest uppercase text-zinc-200">
-                LIMITED DROPS
-              </h4>
-              <p className="mt-1 text-xs text-zinc-400 leading-relaxed">
-                Exclusive packaging drops available to subscribers first.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-900 border border-zinc-800 text-[#a3e635]">
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-              </svg>
-            </div>
-            <div>
-              <h4 className="text-xs font-bold tracking-widest uppercase text-zinc-200">
-                PRODUCT UPDATES
-              </h4>
-              <p className="mt-1 text-xs text-zinc-400 leading-relaxed">
-                Be the first to know about new features and tools.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-900 border border-zinc-800 text-[#a3e635]">
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                <polyline points="22,6 12,13 2,6" />
-              </svg>
-            </div>
-            <div>
-              <h4 className="text-xs font-bold tracking-widest uppercase text-zinc-200">
-                DIRECT TO YOU
-              </h4>
-              <p className="mt-1 text-xs text-zinc-400 leading-relaxed">
-                Delivered to your inbox or straight to your phone.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-900 border border-zinc-800 text-[#a3e635]">
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              </svg>
-            </div>
-            <div>
-              <h4 className="text-xs font-bold tracking-widest uppercase text-zinc-200">
-                NO SPAM, EVER
-              </h4>
-              <p className="mt-1 text-xs text-zinc-400 leading-relaxed">
-                Only important updates. Unsubscribe anytime.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </footer>
   );
 }
 
@@ -525,37 +270,30 @@ function Confirmation({
     <div
       role="status"
       aria-live="polite"
-      className="mt-6 rounded-[12px] border border-zinc-200 bg-white p-6 shadow-sm sm:p-8"
+      className="rounded-[28px] border-2 border-black bg-white p-6"
     >
-      <div className="flex items-center gap-2 font-mono text-[9px] tracking-[0.22em] text-lime-600">
-        <span className="h-1.5 w-1.5 bg-lime-400" />
-        <span>{alreadySubscribed ? "ALREADY ON THE LIST" : "CONFIRMED"}</span>
-      </div>
+      <span className="inline-block rounded-full bg-[var(--dcl-lime)] px-3 py-1 text-[12px] font-extrabold">
+        {alreadySubscribed ? "Already on the list" : "Confirmed"}
+      </span>
 
-      <h2 className="mt-4 text-[26px] font-medium leading-[1.05] tracking-[-0.04em] sm:text-[32px]">
+      <h3 className="mt-4 text-[28px] font-black leading-[1.05] tracking-[-0.03em]">
         {alreadySubscribed
-          ? "YOU\u2019RE ALREADY ON THE LIST."
-          : "YOU\u2019RE ON THE LIST."}
-      </h2>
+          ? "You’re already on the list."
+          : "You’re on the list!"}
+      </h3>
 
-      <div className="mt-4 space-y-2 text-[13px] leading-6 text-zinc-600">
+      <div className="mt-4 space-y-2 text-[14px] leading-6 text-zinc-700">
         {email && (
           <p>
             Email updates will go to{" "}
-            <span className="font-mono text-[12px] font-medium text-zinc-900">
-              {email}
-            </span>
-            .
+            <span className="font-bold text-zinc-950">{email}</span>.
           </p>
         )}
 
         {phone && (
           <p>
             SMS updates will go to{" "}
-            <span className="font-mono text-[12px] font-medium text-zinc-900">
-              {phone}
-            </span>
-            .
+            <span className="font-bold text-zinc-950">{phone}</span>.
           </p>
         )}
 
@@ -566,35 +304,34 @@ function Confirmation({
         </p>
 
         {(emailStatus === "failed" || smsStatus === "failed") && (
-          <p className="rounded-[8px] border border-amber-200 bg-amber-50 p-3 text-[11px] leading-4 text-amber-800">
+          <p className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-3 text-[12px] text-amber-900">
             Your sign-up is saved. Our confirmation message did not go out just
             now and has been logged, so there is no need to sign up again.
           </p>
         )}
 
         {phone && (
-          <p className="font-mono text-[10px] leading-4 text-zinc-400">
+          <p className="text-[12px] text-zinc-500">
             Reply STOP to any text to unsubscribe.
           </p>
         )}
       </div>
 
-      <button
-        type="button"
-        onClick={onReset}
-        className="mt-7 inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-5 py-2.5 font-mono text-[10px] tracking-[0.16em] text-zinc-900 transition-colors hover:border-black hover:bg-black hover:text-white"
-      >
-        <span>SIGN UP ANOTHER PERSON</span>
-        <span aria-hidden="true">→</span>
-      </button>
-
-      <Link
-        href="/app"
-        className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#0a0a0d] px-5 py-2.5 font-mono text-[10px] tracking-[0.16em] text-white transition-colors hover:bg-zinc-800"
-      >
-        <span>START YOUR PROJECT</span>
-        <span aria-hidden="true">→</span>
-      </Link>
+      <div className="mt-6 flex flex-wrap gap-3">
+        <button
+          type="button"
+          onClick={onReset}
+          className="rounded-full border-2 border-black bg-white px-5 py-2.5 text-[14px] font-extrabold transition hover:bg-black hover:text-white"
+        >
+          Sign up another person
+        </button>
+        <Link
+          href={START_PROJECT_HREF}
+          className="rounded-full bg-black px-5 py-2.5 text-[14px] font-extrabold text-white transition hover:bg-zinc-800"
+        >
+          Start your project →
+        </Link>
+      </div>
     </div>
   );
 }

@@ -9,9 +9,14 @@ export type PhoneFieldProps = {
   onLocalChange: (v: string) => void;
   onSelectCountry: (c: Country) => void;
   onClearError: () => void;
+  /* Defaults match the landing page sign-up form. */
+  id?: string;
+  label?: string;
+  required?: boolean;
+  consentId?: string;
 };
 export default function PhoneField(p: PhoneFieldProps) {
-  const { country, localPhone, error, onLocalChange, onSelectCountry, onClearError } = p;
+  const { country, localPhone, error, onLocalChange, onSelectCountry, onClearError, id = "subscriber-phone", label = "Mobile number", required = false, consentId = "subscriber-sms-consent" } = p;
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -41,12 +46,12 @@ export default function PhoneField(p: PhoneFieldProps) {
   }, [open]);
   useEffect(() => { listRef.current?.querySelector('[data-active="true"]')?.scrollIntoView({ block: "nearest" }); }, [activeIndex]);
   function choose(next: Country) { onSelectCountry(next); onClearError(); setOpen(false); setQuery(""); }
-  const describedBy = error ? "subscriber-phone-error subscriber-sms-consent" : "subscriber-sms-consent";
+  const describedBy = error ? `${id}-error ${consentId}` : consentId;
   return (
   <div>
-  <label htmlFor="subscriber-phone" className="block text-[11px] font-mono tracking-[0.16em] text-zinc-500 uppercase">MOBILE NUMBER <span className="text-zinc-400 font-normal">OPTIONAL</span></label>
+  <label htmlFor={id} className="block text-[13px] font-bold text-zinc-900">{label} {required ? <span aria-hidden="true" className="text-red-500">*</span> : <span className="font-medium text-zinc-500">(optional)</span>}</label>
   <div ref={rootRef} className="relative mt-1.5">
-  <div className={`flex h-12 w-full items-stretch rounded-2xl border bg-white transition-all focus-within:border-zinc-950 focus-within:ring-2 focus-within:ring-lime-300/60 ${error ? "border-red-400 ring-2 ring-red-400/10" : "border-zinc-200 hover:border-zinc-300"}`}>
+  <div className={`flex h-12 w-full items-stretch rounded-2xl border-2 bg-white transition focus-within:border-black focus-within:ring-4 focus-within:ring-[var(--dcl-lime)]/50 ${error ? "border-red-400" : "border-zinc-300 hover:border-zinc-400"}`}>
   <button type="button" onClick={() => { if (!open) { setActiveIndex(0); setQuery(""); } setOpen(!open); }} aria-haspopup="listbox" aria-expanded={open} aria-label={`Country ${country.name} ${country.dial}`} className="flex shrink-0 items-center gap-1.5 rounded-l-2xl px-3 text-[14px] font-medium text-zinc-900 outline-none hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lime-400">
   <span aria-hidden="true" className="text-[18px] leading-none">{country.flag}</span>
   <span className="tabular-nums">{country.dial}</span>
@@ -55,7 +60,7 @@ export default function PhoneField(p: PhoneFieldProps) {
   <span aria-hidden="true" className="my-2.5 w-px shrink-0 bg-zinc-200" />
   <div className="relative min-w-0 flex-1">
   <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg></span>
-  <input id="subscriber-phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" value={localPhone} onChange={(e) => { onLocalChange(e.target.value.replace(/[^\d\s().+\-]/g, "")); if (error) onClearError(); }} placeholder={country.placeholder} aria-invalid={Boolean(error)} aria-describedby={describedBy} className="h-full w-full rounded-r-2xl bg-transparent pl-10 pr-4 text-[14px] text-zinc-900 outline-none placeholder:text-zinc-400" />
+  <input id={id} name="phone" required={required} aria-required={required} type="tel" inputMode="tel" autoComplete="tel" value={localPhone} onChange={(e) => { onLocalChange(e.target.value.replace(/[^\d\s().+\-]/g, "")); if (error) onClearError(); }} placeholder={country.placeholder} aria-invalid={Boolean(error)} aria-describedby={describedBy} className="h-full w-full rounded-r-2xl bg-transparent pl-10 pr-4 text-[14px] text-zinc-900 outline-none placeholder:text-zinc-400" />
   </div>
   </div>
   {open && (
@@ -80,7 +85,7 @@ export default function PhoneField(p: PhoneFieldProps) {
   </div>
   )}
   </div>
-  {error && (<p id="subscriber-phone-error" role="alert" className="mt-1.5 text-[11px] text-red-500">{error}</p>)}
+  {error && (<p id={`${id}-error`} role="alert" className="mt-1.5 text-[11px] text-red-500">{error}</p>)}
   </div>
   );
 }

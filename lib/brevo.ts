@@ -17,6 +17,8 @@
    provider failure can never block the user-facing success state.
 */
 
+import { CONTACT } from "./contact";
+
 const BREVO_API_BASE = "https://api.brevo.com/v3";
 const BREVO_TIMEOUT_MS = 8000;
 
@@ -280,3 +282,173 @@ Thanks for signing up for DYE CUT LAB updates. We'll let you know when new packa
 You're receiving this because you signed up for product updates at dyecutlab.com/updates. Reply to this email to unsubscribe at any time.`;
 }
 
+
+/* =========================================================
+   STAFF NOTIFICATIONS — /start quote requests
+=========================================================
+
+   Sent to the team (not the customer) the moment a quote request is
+   saved, so someone can text the customer back directly. SMS is the
+   primary ping; email is a backup and a searchable record.
+
+   Destinations default to the business contact details in
+   lib/contact.ts and can be overridden per environment with
+   STAFF_NOTIFY_PHONE / STAFF_NOTIFY_EMAIL.
+*/
+
+const STAFF_SMS_DESCRIPTION_MAX = 280;
+
+export type QuoteNotification = {
+  description: string;
+  phone: string;
+};
+
+function getStaffDestinations() {
+  return {
+    phone: process.env.STAFF_NOTIFY_PHONE?.trim() || CONTACT.phoneE164,
+    email: process.env.STAFF_NOTIFY_EMAIL?.trim() || CONTACT.email,
+  };
+}
+
+export async function sendStaffQuoteSms(
+  input: QuoteNotification
+): Promise<ChannelResult> {
+  const { apiKey, sender } = getSmsConfig();
+  const { phone: staffPhone } = getStaffDestinations();
+
+  if (!apiKey) {
+    return { status: "skipped", detail: "BREVO_API_KEY is not configured." };
+  }
+
+  const summary =
+    input.description.length > STAFF_SMS_DESCRIPTION_MAX
+      ? `${input.description.slice(0, STAFF_SMS_DESCRIPTION_MAX - 1)}…`
+      : input.description;
+
+  try {
+    await brevoPost("/transactionalSMS/send", apiKey, {
+      recipient: staffPhone,
+      sender,
+      content: `Hi ${CONTACT.personName} - new DYE CUT LAB quote request.\nText them: ${input.phone}\n\n"${summary}"`,
+      /* Internal alert with no opt-out keyword, so it stays transactional
+         (no marketing sending-hour restrictions). */
+      type: "transactional",
+      /* Customer descriptions can contain emoji / accents. */
+      unicodeEnabled: true,
+      tag: "quote_request_staff",
+    });
+
+    return { status: "sent" };
+  } catch (error) {
+    console.error("BREVO STAFF SMS ERROR:", error);
+    return { status: "failed", detail: errorMessage(error) };
+  }
+}
+
+export async function sendStaffQuoteEmail(
+  input: QuoteNotification
+): Promise<ChannelResult> {
+  const { apiKey, senderEmail, senderName } = getEmailConfig();
+  const { email: staffEmail } = getStaffDestinations();
+
+  if (!apiKey) {
+    return { status: "skipped", detail: "BREVO_API_KEY is not configured." };
+  }
+
+  if (!senderEmail) {
+    return {
+      status: "skipped",
+      detail: "BREVO_SENDER_EMAIL is not configured.",
+    };
+  }
+
+  const phone = escapeHtml(input.phone);
+  const description = escapeHtml(input.description).replace(/\n/g, "<br />");
+
+  try {
+    await brevoPost("/smtp/email", apiKey, {
+      sender: { name: senderName, email: senderEmail },
+      to: [{ email: staffEmail }],
+      subject: `New quote request — text ${input.phone}`,
+      htmlContent: `<!doctype html>
+<html lang="en">
+  <body style="margin:0;padding:24px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#0a0a0a;">
+    <p style="margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:0.12em;color:#65a30d;">HI ${escapeHtml(CONTACT.personName.toUpperCase())} — NEW QUOTE REQUEST</p>
+    <p style="margin:0 0 18px;font-size:24px;font-weight:900;">Text them back: <a href="sms:${phone}" style="color:#0a0a0a;">${phone}</a></p>
+    <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#71717a;">WHAT THEY WANT MADE</p>
+    <p style="margin:0;padding:14px 16px;border-radius:14px;background:#f2fadf;font-size:15px;line-height:22px;">${description}</p>
+    <p style="margin:18px 0 0;font-size:11px;color:#a1a1aa;">Sent from the /start page. Saved in Supabase → quote_requests.</p>
+  </body>
+</html>`,
+      textContent: `Hi ${CONTACT.personName} — new quote request\n\nText them back: ${input.phone}\n\nWhat they want made:\n${input.description}\n\nSaved in Supabase → quote_requests.`,
+      tags: ["quote_request_staff"],
+    });
+
+    return { status: "sent" };
+  } catch (error) {
+    console.error("BREVO STAFF EMAIL ERROR:", error);
+    return { status: "failed", detail: errorMessage(error) };
+  }
+}
+
+/* Team alert for a NEW beta sign-up (repeat sign-ups are not re-sent).
+   Email only — the team asked for an inbox record, not a text. */
+export async function sendStaffSignupEmail(input: {
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+}): Promise<ChannelResult> {
+  const { apiKey, senderEmail, senderName } = getEmailConfig();
+  const { email: staffEmail } = getStaffDestinations();
+
+  if (!apiKey) {
+    return { status: "skipped", detail: "BREVO_API_KEY is not configured." };
+  }
+
+  if (!senderEmail) {
+    return {
+      status: "skipped",
+      detail: "BREVO_SENDER_EMAIL is not configured.",
+    };
+  }
+
+  const who = input.name || input.email || input.phone || "Someone";
+  const rows = [
+    ["Name", input.name],
+    ["Email", input.email],
+    ["Mobile", input.phone],
+  ].filter((row): row is [string, string] => Boolean(row[1]));
+
+  const htmlRows = rows
+    .map(
+      ([label, value]) =>
+        `<tr><td style="padding:6px 16px 6px 0;font-size:12px;font-weight:700;color:#71717a;">${label.toUpperCase()}</td><td style="padding:6px 0;font-size:15px;">${escapeHtml(value)}</td></tr>`
+    )
+    .join("");
+
+  try {
+    await brevoPost("/smtp/email", apiKey, {
+      sender: { name: senderName, email: senderEmail },
+      to: [{ email: staffEmail }],
+      subject: `New beta sign-up — ${who}`,
+      htmlContent: `<!doctype html>
+<html lang="en">
+  <body style="margin:0;padding:24px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#0a0a0a;">
+    <p style="margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:0.12em;color:#65a30d;">HI ${escapeHtml(CONTACT.personName.toUpperCase())} — NEW BETA SIGN-UP</p>
+    <p style="margin:0 0 18px;font-size:24px;font-weight:900;">${escapeHtml(who)} joined the beta list.</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="padding:14px 16px;border-radius:14px;background:#f2fadf;">${htmlRows}</table>
+    <p style="margin:18px 0 0;font-size:11px;color:#a1a1aa;">Sent from the landing page sign-up form. Saved in Supabase → subscribers and added to Brevo contacts.</p>
+  </body>
+</html>`,
+      textContent: `Hi ${CONTACT.personName} — new beta sign-up\n\n${rows
+        .map(([label, value]) => `${label}: ${value}`)
+        .join("\n")}\n\nSaved in Supabase → subscribers and added to Brevo contacts.`,
+      tags: ["beta_signup_staff"],
+    });
+
+    return { status: "sent" };
+  } catch (error) {
+    console.error("BREVO STAFF SIGNUP EMAIL ERROR:", error);
+    return { status: "failed", detail: errorMessage(error) };
+  }
+}

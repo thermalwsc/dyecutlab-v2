@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { validateSignup, type RawSignupInput } from "../../../lib/subscribers";
 import {
   sendBrevoConfirmationEmail,
   sendBrevoConfirmationSms,
+  sendStaffSignupEmail,
   syncBrevoContact,
   type ChannelResult,
 } from "../../../lib/brevo";
+import { clientKey, createRateLimiter } from "../../../lib/rateLimit";
+import { getPublicSupabase } from "../../../lib/supabasePublic";
 
 /* ---------------------------------------------------------
    POST /api/subscribers — landing page lead capture
@@ -14,7 +16,8 @@ import {
    Order of operations (deliberate):
    1. validate            → 400 with per-field errors
    2. save to Supabase    → source of truth, blocks the success state
-   3. notify through Brevo → best effort, never blocks the success state
+   3. notify through Brevo → confirmation to the subscriber + team alert
+                              email; best effort, never blocks success
 
    The route talks to Supabase with the publishable (anon) key, so the
    subscribers RLS policy allows INSERT only. Duplicates are detected
@@ -22,66 +25,11 @@ import {
    than a read, because anon has no SELECT grant.
 --------------------------------------------------------- */
 
-const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
-const RATE_LIMIT_MAX_REQUESTS = 5;
-const RATE_LIMIT_MAX_KEYS = 5000;
-
-/* Best effort, per-instance throttle. It is enough to stop a single
-   connection from hammering the form and is intentionally not a
-   distributed limiter for v1. */
-const rateLimitHits = new Map<string, number[]>();
-
-function getSupabase() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!supabaseUrl || !supabaseKey) {
-    return null;
-  }
-
-  return createClient(supabaseUrl, supabaseKey);
-}
-
-/* Best-effort client identity for the throttle. On Vercel `x-real-ip` is
-   platform-set and `x-forwarded-for` appends the real client IP last, so a
-   value injected by the caller cannot be used to reset the bucket. */
-function clientKey(request: NextRequest) {
-  const realIp = request.headers.get("x-real-ip")?.trim();
-
-  if (realIp) {
-    return realIp;
-  }
-
-  const hops = request.headers
-    .get("x-forwarded-for")
-    ?.split(",")
-    .map((hop) => hop.trim())
-    .filter(Boolean);
-
-  return hops && hops.length > 0 ? hops[hops.length - 1] : "unknown";
-}
-
-function isRateLimited(key: string) {
-  const now = Date.now();
-  const recent = (rateLimitHits.get(key) ?? []).filter(
-    (hit) => now - hit < RATE_LIMIT_WINDOW_MS
-  );
-
-  if (recent.length >= RATE_LIMIT_MAX_REQUESTS) {
-    rateLimitHits.set(key, recent);
-    return true;
-  }
-
-  recent.push(now);
-  rateLimitHits.set(key, recent);
-
-  if (rateLimitHits.size > RATE_LIMIT_MAX_KEYS) {
-    rateLimitHits.clear();
-  }
-
-  return false;
-}
+/* 5 submissions / 10 minutes per client. */
+const isRateLimited = createRateLimiter({
+  windowMs: 10 * 60 * 1000,
+  maxRequests: 5,
+});
 
 export async function POST(request: NextRequest) {
   if (isRateLimited(clientKey(request))) {
@@ -120,7 +68,7 @@ export async function POST(request: NextRequest) {
   const { name, email, phone, emailOptIn, smsOptIn, source } =
     validation.value;
 
-  const supabase = getSupabase();
+  const supabase = getPublicSupabase();
 
   if (!supabase) {
     console.error(
@@ -185,6 +133,8 @@ export async function POST(request: NextRequest) {
       await syncBrevoContact({ email, phone, name });
     }
 
+    /* The team alert is internal only, so it is not reported back in
+       `channels`; a failure is logged inside sendStaffSignupEmail. */
     const [emailResult, smsResult] = await Promise.all([
       email
         ? sendBrevoConfirmationEmail({ email, name })
@@ -192,6 +142,7 @@ export async function POST(request: NextRequest) {
       phone
         ? sendBrevoConfirmationSms({ phone })
         : Promise.resolve(channels.sms),
+      sendStaffSignupEmail({ name, email, phone }),
     ]);
 
     channels.email = emailResult;

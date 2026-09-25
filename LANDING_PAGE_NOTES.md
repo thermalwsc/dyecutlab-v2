@@ -215,3 +215,75 @@ Locally I ran `npm rebuild lightningcss @tailwindcss/oxide` plus
 `npm install --no-save lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc`
 (package.json is unchanged). A clean `npm install` / `npm ci` on the machine
 that deploys fixes this properly.
+
+---
+
+## 10. Redesign (Sep 2026) + ⚠️ "Text a keyword" flow is NOT wired up
+
+The `/` landing page was restyled to the client's lime/black reference
+(header, hero with stacked boxes, "Join Our Beta" panel, "Need Packaging
+Now?" panel, trust row, footer). Files: `app/updates/LandingPage.tsx`,
+`Icons.tsx`, hero image `public/Hero-section-image.png`; `SignupForm.tsx` keeps all of its logic and
+now renders only the form. `HeroVisual.tsx` (old SaaS dashboard) was removed.
+
+**The "Text JOIN / Text ORDER to (number)" pills are visual only.** They need,
+before launch:
+
+1. **A provisioned, SMS-capable number that receives inbound texts.** The
+   current Brevo setup only *sends* (`/v3/transactionalSMS/send`) from an
+   alphanumeric sender ID, which US carriers don't allow and which can't
+   receive replies. US needs a registered 10DLC long code or toll-free number
+   (A2P/10DLC or toll-free verification). Confirm whether the client's Brevo
+   plan offers inbound numbers + keyword automation; if not, Twilio / Telnyx /
+   Sinch etc. would handle inbound.
+2. **Keyword automation:** `JOIN` → create/opt-in a subscriber (write to
+   Supabase `subscribers` with `sms_opt_in`, `source = 'sms_keyword'`) and send
+   the confirmation; `ORDER` → notify staff (email/Slack/CRM) and auto-reply.
+   `STOP`/`HELP` must be handled by the provider or us. Likely an inbound
+   webhook route (e.g. `app/api/sms/inbound/route.ts`) with signature
+   verification — needs a service-role Supabase path, since the public key is
+   INSERT-only.
+3. **Compliance copy sign-off:** carriers typically require program name,
+   message frequency, "Msg & data rates may apply", STOP/HELP, and links to
+   Terms + Privacy near the CTA. Current copy is in `lib/smsKeywords.ts`.
+
+**Current state:** the pills show the team's real number, (646) 991-6338
+(`lib/contact.ts`), and are tappable `sms:` links (`SMS_NUMBER_ACCEPTS_TEXTS`).
+Texts land on that phone and are handled **manually** — ORDER by replying,
+JOIN by adding the contact to Brevo by hand. `SMS_KEYWORDS_LIVE = false`
+keeps the web sign-up form open as the reliable way to join. Sending
+recurring marketing texts to people who texted JOIN should wait for the US
+toll-free registration in Brevo.
+
+Other placeholders: Instagram/TikTok URLs (icons render unlinked), About/Contact
+nav go to on-page anchors (no pages exist yet).
+
+---
+
+## 11. TEMPORARY "Start your project" page — `/start`
+
+Stand-in for the DICI chat (`/app`) while it has active bugs. Every
+"Start your project" link reads `START_PROJECT_HREF` in `lib/contact.ts`.
+`/app` itself is untouched and still reachable directly.
+
+- **Page:** `app/start/page.tsx` + `app/start/StartForm.tsx`. Reuses the
+  landing page's header/menu, trust row and footer (`app/updates/SiteChrome.tsx`),
+  icons/doodles (`Icons.tsx`), `PhoneField`, the Poppins font (`app/fonts.ts`)
+  and the same form/button styles.
+- **Data:** `POST /api/quote-requests` → validate (`lib/quoteRequests.ts`) →
+  insert into **`quote_requests`** (separate from `subscribers`, INSERT-only
+  RLS; migration `20260925010000_create_quote_requests.sql`) → staff alerts.
+  Throttle 3 / 10 min per IP + hidden honeypot field.
+- **Staff alert:** Brevo SMS to `STAFF_NOTIFY_PHONE` and Brevo email to
+  `STAFF_NOTIFY_EMAIL` in parallel, defaulting to the client's contact
+  details (+1 646 991 6338 / dyecutlab@gmail.com). If neither goes out the
+  request is still saved and `QUOTE REQUEST STAFF NOT NOTIFIED` is logged.
+  No automatic message goes to the customer.
+
+**Before launch:** apply the migration (the table does not exist yet), set
+`BREVO_API_KEY` + a verified `BREVO_SENDER_EMAIL`, and confirm the Brevo SMS
+sender can deliver to a US number (alphanumeric sender IDs generally cannot).
+
+**To remove:** set `START_PROJECT_HREF` back to `"/app"`, delete `app/start/`,
+`app/api/quote-requests/` and `lib/quoteRequests.ts`, and the
+`sendStaffQuote*` functions in `lib/brevo.ts`. Keep the table (real leads).

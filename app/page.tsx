@@ -1,21 +1,26 @@
 import type { Metadata } from "next";
-import SignupForm from "./updates/SignupForm";
+import { brandFont } from "./fonts";
+import LandingPage from "./updates/LandingPage";
 
 export const metadata: Metadata = {
-  title: "Get DYE CUT LAB + DICI Updates",
+  title: "DYE CUT LAB — Custom Packaging Made Simple",
   description:
-    "Sign up for early access, new packaging drops and DICI feature releases from DYE CUT LAB.",
+    "Boxes, mailers, labels and more for your brand. Join the DYE CUT LAB beta for early access to new tools.",
   openGraph: {
-    title: "Get DYE CUT LAB + DICI Updates",
+    title: "DYE CUT LAB — Custom Packaging Made Simple",
     description:
-      "Sign up for early access, new packaging drops and DICI feature releases from DYE CUT LAB.",
+      "Boxes, mailers, labels and more for your brand. Join the DYE CUT LAB beta for early access to new tools.",
     type: "website",
   },
 };
 
-/* Landing page is now the default route (/).
-   Sign-up form lives in ./updates/SignupForm.tsx (client component)
-   so this file can stay a server component and export metadata. */
-export default function LandingPage() {
-  return <SignupForm />;
+/* Landing page is the default route (/). Interactive parts live in
+   ./updates/LandingPage.tsx (client component) so this file can stay a
+   server component and export metadata. */
+export default function Page() {
+  return (
+    <div className={`${brandFont.className} dcl-landing`}>
+      <LandingPage />
+    </div>
+  );
 }

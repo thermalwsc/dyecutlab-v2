@@ -119,3 +119,15 @@ body {
 }
 
 
+
+/* Landing page palette — single lime accent used everywhere. */
+:root {
+  --dcl-lime: #c2f23a;
+  --dcl-lime-deep: #8fcc12;
+  --dcl-lime-soft: #f2fadf;
+}
+
+/* SVG <text> doesn't inherit next/font's class on its own. */
+.dcl-landing svg text {
+  font-family: inherit;
+}

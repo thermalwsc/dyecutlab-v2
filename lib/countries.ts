@@ -44,4 +44,24 @@ export const COUNTRIES: Country[] = [
   { name: "Portugal", code: "PT", dial: "+351", flag: "🇵🇹", placeholder: "912 345 678" },
 ];
 
-export const DEFAULT_COUNTRY: Country = COUNTRIES[0]; // Philippines +63
+/* The team is US-based, so every phone picker starts on +1. */
+export const DEFAULT_COUNTRY: Country =
+  COUNTRIES.find((country) => country.code === "US") ?? COUNTRIES[0];
+
+/* Combine the selected country dial code with the locally-entered number
+   into the full international value the existing backend expects
+   (e.g. "+63" + "917 555 0123" -> "+639175550123"). Avoids duplicating
+   the dial code when the user pastes a full international number. */
+export function buildFullPhone(dial: string, local: string) {
+  const trimmed = local.trim();
+  if (!trimmed) return "";
+  // User pasted a full international number — keep it as-is.
+  if (trimmed.startsWith("+")) return trimmed;
+  const digits = trimmed.replace(/[^\d]/g, "");
+  const dialDigits = dial.replace("+", "");
+  // User included the dial code without "+" (e.g. "63917...").
+  if (digits.startsWith(dialDigits)) return `+${digits}`;
+  // Strip domestic trunk zero ("0917..." -> "917...") before prefixing.
+  const withoutTrunk = digits.replace(/^0+/, "");
+  return `${dial} ${withoutTrunk}`;
+}
