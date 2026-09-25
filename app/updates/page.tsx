@@ -1,21 +1,7 @@
-import type { Metadata } from "next";
-import SignupForm from "./SignupForm";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Get DYE CUT LAB + DICI Updates",
-  description:
-    "Sign up for early access, new packaging drops and DICI feature releases from DYE CUT LAB.",
-  openGraph: {
-    title: "Get DYE CUT LAB + DICI Updates",
-    description:
-      "Sign up for early access, new packaging drops and DICI feature releases from DYE CUT LAB.",
-    type: "website",
-  },
-};
-
-/* Public lead-capture page. Sign-up form lives in SignupForm.tsx
-   (client component) so this file can stay a server component and
-   export metadata. */
-export default function UpdatesPage() {
-  return <SignupForm />;
+/* Landing page moved to / — keep /updates as a redirect
+   so old shared links don't break. */
+export default function UpdatesRedirect() {
+  redirect("/");
 }

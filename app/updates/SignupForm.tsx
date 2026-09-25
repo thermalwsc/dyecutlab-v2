@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import HeroVisual from "./HeroVisual";
 
@@ -151,11 +152,19 @@ export default function SignupForm() {
         <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between px-5 py-4 sm:px-8 lg:px-12">
           <Logo />
 
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-[#a3e635] shadow-[0_0_8px_#a3e635]" />
-            <p className="font-mono text-[10px] font-semibold tracking-[0.24em] text-zinc-900 uppercase">
-              PRODUCT UPDATES
-            </p>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/app"
+              className="rounded-full bg-[#0a0a0d] px-4 py-2 font-mono text-[10px] font-bold tracking-[0.16em] text-white transition-colors hover:bg-zinc-800"
+            >
+              START YOUR PROJECT →
+            </Link>
+            <div className="hidden items-center gap-2 sm:flex">
+              <span className="h-2 w-2 rounded-full bg-[#a3e635] shadow-[0_0_8px_#a3e635]" />
+              <p className="font-mono text-[10px] font-semibold tracking-[0.24em] text-zinc-900 uppercase">
+                PRODUCT UPDATES
+              </p>
+            </div>
           </div>
         </div>
       </header>
@@ -181,6 +190,20 @@ export default function SignupForm() {
             </p>
 
             <BenefitsRow />
+
+            {/* Secondary CTA to the DICI chat — sign-up stays primary */}
+            <div className="mt-8 flex flex-col gap-2">
+              <p className="text-[13px] text-zinc-500">
+                Already know what you want to make?
+              </p>
+              <Link
+                href="/app"
+                className="group inline-flex w-fit items-center gap-2 rounded-full border border-zinc-900 bg-white px-5 py-2.5 font-mono text-[10px] font-bold tracking-[0.16em] text-zinc-900 transition-colors hover:bg-black hover:text-white"
+              >
+                <span>START YOUR PROJECT</span>
+                <span aria-hidden="true">→</span>
+              </Link>
+            </div>
 
             {/* Mobile visual position: in mobile, shows right after benefits */}
             <div className="mt-10 block lg:hidden">
@@ -564,6 +587,14 @@ function Confirmation({
         <span>SIGN UP ANOTHER PERSON</span>
         <span aria-hidden="true">→</span>
       </button>
+
+      <Link
+        href="/app"
+        className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#0a0a0d] px-5 py-2.5 font-mono text-[10px] tracking-[0.16em] text-white transition-colors hover:bg-zinc-800"
+      >
+        <span>START YOUR PROJECT</span>
+        <span aria-hidden="true">→</span>
+      </Link>
     </div>
   );
 }
