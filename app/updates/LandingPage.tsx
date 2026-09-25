@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import SignupForm from "./SignupForm";
-import { Footer, Header, TrustRow } from "./SiteChrome";
+import { Footer, Header, SmsLegalLinks, TrustRow } from "./SiteChrome";
 import {
   ArrowIcon,
   BagLockIcon,
@@ -46,10 +46,10 @@ export default function LandingPage() {
 /* ---------------------------------------------------------------- */
 
 const CATEGORIES = [
-  { label: "Boxes", src: "/box.png" },
-  { label: "Mailers", src: "/mailers.png" },
-  { label: "Labels", src: "/labels.png" },
-  { label: "And More", src: "/and-more.png" },
+  { label: "Boxes", src: "/boxes.png" },
+  { label: "Mylar Bags", src: "/mylar-bags.png" },
+  { label: "Novelties", src: "/novelties.png" },
+  { label: "And More", src: "/and-more-stack.png" },
 ];
 
 /* Mobile-first, matching the reference mockup: headline, subline and the
@@ -95,7 +95,7 @@ function Hero() {
         </h1>
 
         <p className="mt-3 max-w-[60%] text-[clamp(13px,3.6vw,22px)] font-semibold leading-snug text-zinc-900 sm:mt-5 lg:max-w-[26ch]">
-          Boxes, mailers, labels and more for your brand.
+          Boxes, mylar bags, novelties and more for your brand.
         </p>
 
         <ul className="mt-5 grid w-[62%] grid-cols-4 gap-[2%] sm:mt-8 sm:w-[56%] lg:w-[50%] lg:max-w-[560px]">
@@ -114,7 +114,7 @@ function Hero() {
                 sizes="(min-width: 1024px) 96px, 15vw"
                 className="aspect-square w-[82%] object-contain"
               />
-              <span className="mt-1.5 whitespace-nowrap text-[clamp(10px,2.9vw,17px)] font-extrabold leading-tight">
+              <span className="mt-1.5 text-balance text-[clamp(10px,2.9vw,17px)] font-extrabold leading-tight">
                 {label}
               </span>
             </li>
@@ -189,6 +189,7 @@ function BetaPanel() {
 
       <p className="mx-auto mt-2.5 max-w-[52ch] text-center text-[clamp(10px,2.8vw,12px)] leading-relaxed text-zinc-700">
         {SMS_KEYWORD_CONSENT_COPY}
+        <SmsLegalLinks />
       </p>
 
       {!SMS_KEYWORDS_LIVE && (

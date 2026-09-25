@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowIcon } from "./Icons";
+import { SmsLegalLinks } from "./SiteChrome";
 import { START_PROJECT_HREF } from "../../lib/contact";
 
 import {
@@ -185,6 +186,7 @@ export default function SignupForm() {
         className="text-[12px] leading-relaxed text-zinc-600"
       >
         {SMS_CONSENT_COPY}
+        <SmsLegalLinks />
       </p>
 
       {(errors.form || formError) && (

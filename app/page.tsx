@@ -5,11 +5,11 @@ import LandingPage from "./updates/LandingPage";
 export const metadata: Metadata = {
   title: "DYE CUT LAB — Custom Packaging Made Simple",
   description:
-    "Boxes, mailers, labels and more for your brand. Join the DYE CUT LAB beta for early access to new tools.",
+    "Boxes, mylar bags, novelties and more for your brand. Join the DYE CUT LAB beta for early access to new tools.",
   openGraph: {
     title: "DYE CUT LAB — Custom Packaging Made Simple",
     description:
-      "Boxes, mailers, labels and more for your brand. Join the DYE CUT LAB beta for early access to new tools.",
+      "Boxes, mylar bags, novelties and more for your brand. Join the DYE CUT LAB beta for early access to new tools.",
     type: "website",
   },
 };

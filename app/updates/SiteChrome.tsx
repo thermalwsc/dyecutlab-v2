@@ -145,14 +145,19 @@ export function TrustRow() {
 export function Footer() {
   return (
     <footer className="bg-[#0a0a0a] text-white">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-5 sm:px-6 sm:py-8 lg:px-10">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6 sm:py-8 lg:px-10">
         <Wordmark inverted compact />
 
-        <div className="flex items-center gap-2.5 sm:gap-5">
-          <nav aria-label="Footer" className="flex items-center gap-1.5 text-[12px] font-medium sm:gap-3 sm:text-[15px]">
+        {/* Own row on phones so the four links + socials never overflow. */}
+        <div className="flex items-center justify-between gap-2.5 sm:justify-end sm:gap-5">
+          <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-medium sm:gap-3 sm:text-[15px]">
             <Link href="/#about" className="hover:text-[var(--dcl-lime)]">About</Link>
             <span aria-hidden="true" className="text-zinc-600">|</span>
             <Link href="/#order" className="hover:text-[var(--dcl-lime)]">Contact</Link>
+            <span aria-hidden="true" className="text-zinc-600">|</span>
+            <Link href="/privacy" className="hover:text-[var(--dcl-lime)]">Privacy</Link>
+            <span aria-hidden="true" className="text-zinc-600">|</span>
+            <Link href="/terms" className="hover:text-[var(--dcl-lime)]">Terms</Link>
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
@@ -171,5 +176,24 @@ export function Footer() {
         </div>
       </div>
     </footer>
+  );
+}
+
+/* One line of links placed after every SMS consent notice, so carriers
+   reviewing the opt-in flow can reach the full terms and privacy policy. */
+export function SmsLegalLinks({ tone = "dark" }: { tone?: "dark" | "light" }) {
+  const color = tone === "light" ? "text-white" : "text-black";
+  return (
+    <>
+      {" "}
+      <Link href="/terms#sms" className={`font-bold underline underline-offset-2 ${color}`}>
+        SMS Terms
+      </Link>{" "}
+      &amp;{" "}
+      <Link href="/privacy" className={`font-bold underline underline-offset-2 ${color}`}>
+        Privacy Policy
+      </Link>
+      .
+    </>
   );
 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import PhoneField from "../updates/PhoneField";
+import { SmsLegalLinks } from "../updates/SiteChrome";
 import {
   ArrowIcon,
   Burst,
@@ -180,6 +181,7 @@ export default function StartForm() {
 
                   <p id="quote-sms-consent" className="text-[12px] leading-relaxed text-zinc-600">
                     {QUOTE_SMS_CONSENT_COPY}
+                    <SmsLegalLinks />
                   </p>
 
                   {formError && (

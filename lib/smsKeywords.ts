@@ -39,7 +39,7 @@ export const SMS_KEYWORDS = {
    client/counsel once the program (frequency, HELP reply, terms and
    privacy URLs) is registered with the carrier/provider. */
 export const SMS_KEYWORD_CONSENT_COPY =
-  "By texting JOIN, you agree to receive recurring SMS updates from DYE CUT LAB. Message and data rates may apply. Reply STOP to opt out, HELP for help.";
+  "By texting JOIN, you agree to receive recurring automated text messages from DYE CUT LAB with beta updates. Consent is not a condition of purchase. Message frequency varies. Message and data rates may apply. Reply STOP to cancel, HELP for help.";
 
 /* `sms:` URI with a prefilled body. `?&body=` is the form that works
    on both iOS and Android. */

@@ -14,7 +14,7 @@ export const SUBSCRIBERS_SOURCE = "landing_page";
 
 /* Compliance copy required on the landing page (see notes). */
 export const SMS_CONSENT_COPY =
-  "By providing your phone number, you agree to receive SMS updates from DYE CUT LAB. Message and data rates may apply. Reply STOP to unsubscribe.";
+  "By providing your phone number, you agree to receive recurring automated text messages from DYE CUT LAB with product and beta updates. Consent is not a condition of purchase. Message frequency varies. Message and data rates may apply. Reply STOP to cancel, HELP for help.";
 
 const NAME_MAX_LENGTH = 120;
 const EMAIL_MAX_LENGTH = 254;

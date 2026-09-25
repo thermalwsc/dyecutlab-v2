@@ -20,7 +20,7 @@ export const DESCRIPTION_MAX_LENGTH = 1000;
 /* Shown under the phone field. Staff will text this number back, so the
    visitor agrees to that specifically — not to marketing. */
 export const QUOTE_SMS_CONSENT_COPY =
-  "By sending this, you agree DYE CUT LAB can text you about your request. Message and data rates may apply. Reply STOP to opt out.";
+  "By sending this, you agree DYE CUT LAB can text you about your request. Consent is not a condition of purchase. Message frequency varies. Message and data rates may apply. Reply STOP to cancel, HELP for help.";
 
 export type QuoteField = "description" | "phone";
 export type QuoteErrors = Partial<Record<QuoteField | "form", string>>;
