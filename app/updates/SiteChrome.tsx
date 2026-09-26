@@ -17,9 +17,10 @@ import {
 } from "./Icons";
 import { START_PROJECT_HREF } from "../../lib/contact";
 
-/* Social profiles — not supplied yet. Icons render unlinked until set. */
+/* Social profiles. A null href renders the icon dimmed with a "Soon"
+   badge until the profile exists. */
 const SOCIAL_LINKS: { label: string; href: string | null; Icon: typeof InstagramIcon }[] = [
-  { label: "Instagram", href: null, Icon: InstagramIcon },
+  { label: "Instagram", href: "https://www.instagram.com/dyecutlab/", Icon: InstagramIcon },
   { label: "TikTok", href: null, Icon: TikTokIcon },
 ];
 
@@ -163,12 +164,23 @@ export function Footer() {
           <div className="flex items-center gap-2 sm:gap-3">
             {SOCIAL_LINKS.map(({ label, href, Icon }) =>
               href ? (
-                <a key={label} href={href} aria-label={label} className="hover:text-[var(--dcl-lime)]">
+                <a
+                  key={label}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`DYE CUT LAB on ${label}`}
+                  className="hover:text-[var(--dcl-lime)]"
+                >
                   <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
                 </a>
               ) : (
-                <span key={label} title={`${label} — link coming soon`} className="text-zinc-400">
+                <span key={label} title={`${label} — coming soon`} className="relative text-zinc-500">
                   <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-[var(--dcl-lime)] px-1 text-[7px] font-extrabold uppercase leading-[11px] text-black sm:text-[8px]">
+                    Soon
+                  </span>
+                  <span className="sr-only">{label} coming soon</span>
                 </span>
               )
             )}

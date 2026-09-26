@@ -3,20 +3,9 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowIcon } from "./Icons";
-import { SmsLegalLinks } from "./SiteChrome";
 import { START_PROJECT_HREF } from "../../lib/contact";
 
-import {
-  SMS_CONSENT_COPY,
-  validateSignup,
-  type SignupErrors,
-} from "../../lib/subscribers";
-import {
-  buildFullPhone,
-  DEFAULT_COUNTRY,
-  type Country,
-} from "../../lib/countries";
-import PhoneField from "./PhoneField";
+import { validateSignup, type SignupErrors } from "../../lib/subscribers";
 
 type ChannelStatus = "sent" | "skipped" | "failed";
 
@@ -25,7 +14,6 @@ type SignupResponse = {
   alreadySubscribed?: boolean;
   channels?: {
     email?: { status?: ChannelStatus };
-    sms?: { status?: ChannelStatus };
   };
   error?: string;
   errors?: SignupErrors;
@@ -33,40 +21,22 @@ type SignupResponse = {
 
 type Confirmation = {
   alreadySubscribed: boolean;
-  email: string | null;
-  phone: string | null;
+  email: string;
   emailStatus: ChannelStatus | null;
-  smsStatus: ChannelStatus | null;
 };
 
-const EMPTY_FORM = { name: "", email: "", phone: "" };
+/* Email only: phone sign-ups go through "Text JOIN" above the form. */
+const EMPTY_FORM = { name: "", email: "" };
 
 export default function SignupForm() {
   const [form, setForm] = useState(EMPTY_FORM);
-  const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
-  const [localPhone, setLocalPhone] = useState("");
   const [errors, setErrors] = useState<SignupErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
 
   function update(field: keyof typeof EMPTY_FORM, value: string) {
-    // The phone field renders as country selector + local number; keep
-    // `form.phone` as the full international value the API already expects.
-    if (field === "phone") {
-      setLocalPhone(value);
-      const full = buildFullPhone(country.dial, value);
-      setForm((current) => ({ ...current, phone: full }));
-      return;
-    }
     setForm((current) => ({ ...current, [field]: value }));
-  }
-
-  function selectCountry(next: Country) {
-    setCountry(next);
-    // Preserve the entered local number; just re-prefix with the new dial.
-    const full = buildFullPhone(next.dial, localPhone);
-    setForm((current) => ({ ...current, phone: full }));
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -109,9 +79,7 @@ export default function SignupForm() {
       setConfirmation({
         alreadySubscribed: Boolean(payload?.alreadySubscribed),
         email: validation.value.email,
-        phone: validation.value.phone,
         emailStatus: payload?.channels?.email?.status ?? null,
-        smsStatus: payload?.channels?.sms?.status ?? null,
       });
     } catch (error) {
       console.error("SUBSCRIBER SIGNUP ERROR:", error);
@@ -126,8 +94,6 @@ export default function SignupForm() {
 
   function reset() {
     setForm(EMPTY_FORM);
-    setCountry(DEFAULT_COUNTRY);
-    setLocalPhone("");
     setErrors({});
     setFormError(null);
     setConfirmation(null);
@@ -141,7 +107,7 @@ export default function SignupForm() {
   return (
     <form className="space-y-4" onSubmit={submit} noValidate>
       <p className="text-[14px] font-medium text-zinc-600">
-        Add an email address, a mobile number, or both.
+        Add your email to get beta news and early access.
       </p>
 
       <TextField
@@ -158,6 +124,7 @@ export default function SignupForm() {
       <TextField
         id="subscriber-email"
         label="Email"
+        required
         type="email"
         inputMode="email"
         autoComplete="email"
@@ -166,28 +133,6 @@ export default function SignupForm() {
         error={errors.email}
         onChange={(value) => update("email", value)}
       />
-
-      {/* Mobile Input — country selector + local number */}
-      <PhoneField
-        country={country}
-        localPhone={localPhone}
-        error={errors.phone}
-        onLocalChange={(value) => update("phone", value)}
-        onSelectCountry={selectCountry}
-        onClearError={() =>
-          setErrors((current) =>
-            current.phone ? { ...current, phone: undefined } : current
-          )
-        }
-      />
-
-      <p
-        id="subscriber-sms-consent"
-        className="text-[12px] leading-relaxed text-zinc-600"
-      >
-        {SMS_CONSENT_COPY}
-        <SmsLegalLinks />
-      </p>
 
       {(errors.form || formError) && (
         <p
@@ -208,8 +153,12 @@ export default function SignupForm() {
       </button>
 
       <p className="text-center text-[12px] leading-relaxed text-zinc-500">
-        We only send the updates you ask for. Unsubscribe any time — reply STOP
-        to any text, or reply to any email.
+        We only send the updates you ask for. Unsubscribe any time by replying
+        to any of our emails. See our{" "}
+        <Link href="/privacy" className="font-bold text-zinc-700 underline underline-offset-2">
+          Privacy Policy
+        </Link>
+        .
       </p>
     </form>
   );
@@ -220,6 +169,7 @@ function TextField({
   label,
   value,
   error,
+  required = false,
   onChange,
   ...input
 }: {
@@ -227,6 +177,7 @@ function TextField({
   label: string;
   value: string;
   error?: string;
+  required?: boolean;
   onChange: (value: string) => void;
 } & Pick<
   React.InputHTMLAttributes<HTMLInputElement>,
@@ -235,13 +186,20 @@ function TextField({
   return (
     <div>
       <label htmlFor={id} className="block text-[13px] font-bold text-zinc-900">
-        {label} <span className="font-medium text-zinc-500">(optional)</span>
+        {label}{" "}
+        {required ? (
+          <span aria-hidden="true" className="text-red-500">*</span>
+        ) : (
+          <span className="font-medium text-zinc-500">(optional)</span>
+        )}
       </label>
       <input
         id={id}
         name={id.replace("subscriber-", "")}
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        required={required}
+        aria-required={required}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${id}-error` : undefined}
         {...input}
@@ -265,8 +223,7 @@ function Confirmation({
   confirmation: Confirmation;
   onReset: () => void;
 }) {
-  const { alreadySubscribed, email, phone, emailStatus, smsStatus } =
-    confirmation;
+  const { alreadySubscribed, email, emailStatus } = confirmation;
 
   return (
     <div
@@ -285,19 +242,10 @@ function Confirmation({
       </h3>
 
       <div className="mt-4 space-y-2 text-[14px] leading-6 text-zinc-700">
-        {email && (
-          <p>
-            Email updates will go to{" "}
-            <span className="font-bold text-zinc-950">{email}</span>.
-          </p>
-        )}
-
-        {phone && (
-          <p>
-            SMS updates will go to{" "}
-            <span className="font-bold text-zinc-950">{phone}</span>.
-          </p>
-        )}
+        <p>
+          Email updates will go to{" "}
+          <span className="font-bold text-zinc-950">{email}</span>.
+        </p>
 
         <p>
           {alreadySubscribed
@@ -305,16 +253,10 @@ function Confirmation({
             : "We will be in touch as soon as there is something worth sending."}
         </p>
 
-        {(emailStatus === "failed" || smsStatus === "failed") && (
+        {emailStatus === "failed" && (
           <p className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-3 text-[12px] text-amber-900">
             Your sign-up is saved. Our confirmation message did not go out just
             now and has been logged, so there is no need to sign up again.
-          </p>
-        )}
-
-        {phone && (
-          <p className="text-[12px] text-zinc-500">
-            Reply STOP to any text to unsubscribe.
           </p>
         )}
       </div>

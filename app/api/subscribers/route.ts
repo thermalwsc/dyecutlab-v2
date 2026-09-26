@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { validateSignup, type RawSignupInput } from "../../../lib/subscribers";
 import {
   sendBrevoConfirmationEmail,
-  sendBrevoConfirmationSms,
   sendStaffSignupEmail,
   syncBrevoContact,
   type ChannelResult,
@@ -21,7 +20,7 @@ import { getPublicSupabase } from "../../../lib/supabasePublic";
 
    The route talks to Supabase with the publishable (anon) key, so the
    subscribers RLS policy allows INSERT only. Duplicates are detected
-   through the unique indexes on email / phone (Postgres 23505) rather
+   through the unique email index (Postgres 23505) rather
    than a read, because anon has no SELECT grant.
 --------------------------------------------------------- */
 
@@ -65,8 +64,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { name, email, phone, emailOptIn, smsOptIn, source } =
-    validation.value;
+  const { name, email, source } = validation.value;
 
   const supabase = getPublicSupabase();
 
@@ -92,14 +90,15 @@ export async function POST(request: NextRequest) {
       .insert({
         name,
         email,
-        phone,
-        email_opt_in: emailOptIn,
-        sms_opt_in: smsOptIn,
+        email_opt_in: true,
+        /* Explicit: the column defaults to true and a CHECK requires a
+           phone for SMS opt-in. Phone sign-ups come from "Text JOIN". */
+        sms_opt_in: false,
         source,
       });
 
-    /* 23505 = unique_violation on subscribers_email_unique_idx /
-       subscribers_phone_unique_idx: the same person already signed up. */
+    /* 23505 = unique_violation on subscribers_email_unique_idx: the same
+       person already signed up. */
     if (insertError?.code === "23505") {
       alreadySubscribed = true;
     } else if (insertError) {
@@ -123,30 +122,21 @@ export async function POST(request: NextRequest) {
     ? "Already subscribed - no confirmation re-sent."
     : null;
 
-  const channels: { email: ChannelResult; sms: ChannelResult } = {
-    email: { status: "skipped", detail: duplicateDetail ?? "No email provided." },
-    sms: { status: "skipped", detail: duplicateDetail ?? "No phone provided." },
+  const channels: { email: ChannelResult } = {
+    email: { status: "skipped", detail: duplicateDetail ?? undefined },
   };
 
   if (!alreadySubscribed) {
-    if (email || phone) {
-      await syncBrevoContact({ email, phone, name });
-    }
+    await syncBrevoContact({ email, phone: null, name });
 
     /* The team alert is internal only, so it is not reported back in
        `channels`; a failure is logged inside sendStaffSignupEmail. */
-    const [emailResult, smsResult] = await Promise.all([
-      email
-        ? sendBrevoConfirmationEmail({ email, name })
-        : Promise.resolve(channels.email),
-      phone
-        ? sendBrevoConfirmationSms({ phone })
-        : Promise.resolve(channels.sms),
-      sendStaffSignupEmail({ name, email, phone }),
+    const [emailResult] = await Promise.all([
+      sendBrevoConfirmationEmail({ email, name }),
+      sendStaffSignupEmail({ name, email, phone: null }),
     ]);
 
     channels.email = emailResult;
-    channels.sms = smsResult;
   }
 
   return NextResponse.json({

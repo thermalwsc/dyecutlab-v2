@@ -24,10 +24,6 @@ const BREVO_TIMEOUT_MS = 8000;
 
 const CONFIRMATION_SUBJECT = "You're on the DYE CUT LAB update list";
 
-/* Required copy — kept identical to the landing page disclosure. */
-export const SMS_CONFIRMATION_CONTENT =
-  "Thanks for signing up for DYE CUT LAB updates! Reply STOP to unsubscribe.";
-
 export type ChannelStatus = "sent" | "skipped" | "failed";
 
 export type ChannelResult = {
@@ -44,7 +40,6 @@ type EmailConfig = {
 type SmsConfig = {
   apiKey: string | null;
   sender: string;
-  type: "transactional" | "marketing";
 };
 
 function getEmailConfig(): EmailConfig {
@@ -56,18 +51,9 @@ function getEmailConfig(): EmailConfig {
 }
 
 function getSmsConfig(): SmsConfig {
-  /* Our confirmation SMS contains a STOP keyword. Per Brevo's docs a
-     stop code reclassifies the message as Marketing SMS, so marketing
-     is the honest default and can be overridden per-environment. */
-  const type =
-    process.env.BREVO_SMS_TYPE?.trim() === "transactional"
-      ? "transactional"
-      : "marketing";
-
   return {
     apiKey: process.env.BREVO_API_KEY?.trim() || null,
     sender: process.env.BREVO_SMS_SENDER?.trim() || "DYECUTLAB",
-    type,
   };
 }
 
@@ -202,32 +188,6 @@ export async function sendBrevoConfirmationEmail(input: {
     return { status: "sent" };
   } catch (error) {
     console.error("BREVO EMAIL SEND ERROR:", error);
-    return { status: "failed", detail: errorMessage(error) };
-  }
-}
-
-export async function sendBrevoConfirmationSms(input: {
-  phone: string;
-}): Promise<ChannelResult> {
-  const { apiKey, sender, type } = getSmsConfig();
-
-  if (!apiKey) {
-    return { status: "skipped", detail: "BREVO_API_KEY is not configured." };
-  }
-
-  try {
-    await brevoPost("/transactionalSMS/send", apiKey, {
-      recipient: input.phone,
-      sender,
-      content: SMS_CONFIRMATION_CONTENT,
-      type,
-      unicodeEnabled: false,
-      tag: "landing_page_signup",
-    });
-
-    return { status: "sent" };
-  } catch (error) {
-    console.error("BREVO SMS SEND ERROR:", error);
     return { status: "failed", detail: errorMessage(error) };
   }
 }

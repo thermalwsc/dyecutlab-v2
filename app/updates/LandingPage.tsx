@@ -31,8 +31,8 @@ export default function LandingPage() {
       <Hero />
 
       <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 pb-4 sm:px-6 lg:grid-cols-2 lg:items-start lg:gap-8 lg:px-10">
-        <BetaPanel />
         <OrderPanel />
+        <BetaPanel />
       </div>
 
       <TrustRow />

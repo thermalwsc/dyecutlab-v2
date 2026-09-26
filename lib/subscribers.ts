@@ -12,10 +12,6 @@
 
 export const SUBSCRIBERS_SOURCE = "landing_page";
 
-/* Compliance copy required on the landing page (see notes). */
-export const SMS_CONSENT_COPY =
-  "By providing your phone number, you agree to receive recurring automated text messages from DYE CUT LAB with product and beta updates. Consent is not a condition of purchase. Message frequency varies. Message and data rates may apply. Reply STOP to cancel, HELP for help.";
-
 const NAME_MAX_LENGTH = 120;
 const EMAIL_MAX_LENGTH = 254;
 const SOURCE_MAX_LENGTH = 64;
@@ -26,23 +22,19 @@ const DEFAULT_COUNTRY_CODE = "1";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
 const E164_PATTERN = /^\+[1-9]\d{7,14}$/;
 
-export type SignupField = "name" | "email" | "phone";
+export type SignupField = "name" | "email";
 export type FormErrorKey = SignupField | "form";
 export type SignupErrors = Partial<Record<FormErrorKey, string>>;
 
 export type SignupInput = {
   name: string | null;
-  email: string | null;
-  phone: string | null;
-  emailOptIn: boolean;
-  smsOptIn: boolean;
+  email: string;
   source: string;
 };
 
 export type RawSignupInput = {
   name?: unknown;
   email?: unknown;
-  phone?: unknown;
   source?: unknown;
 };
 
@@ -87,10 +79,11 @@ export function normalizePhone(raw: string): string | null {
   return E164_PATTERN.test(candidate) ? candidate : null;
 }
 
+/* The landing page form collects email only — phone sign-ups go through
+   "Text JOIN" instead — so email is required and phone is not accepted. */
 export function validateSignup(raw: RawSignupInput): SignupValidation {
   const name = asTrimmedString(raw.name);
   const emailRaw = asTrimmedString(raw.email);
-  const phoneRaw = asTrimmedString(raw.phone);
 
   const errors: SignupErrors = {};
 
@@ -100,19 +93,10 @@ export function validateSignup(raw: RawSignupInput): SignupValidation {
 
   const email = emailRaw ? normalizeEmail(emailRaw) : "";
 
-  if (email && !isValidEmail(email)) {
+  if (!email) {
+    errors.email = "Add your email address so we can send you updates.";
+  } else if (!isValidEmail(email)) {
     errors.email = "Enter a valid email address, like you@brand.com.";
-  }
-
-  const phone = phoneRaw ? normalizePhone(phoneRaw) : null;
-
-  if (phoneRaw && !phone) {
-    errors.phone =
-      "Enter a valid mobile number with country code, like +1 917 555 0123.";
-  }
-
-  if (!emailRaw && !phoneRaw) {
-    errors.form = "Add an email address or a mobile number so we can reach you.";
   }
 
   if (Object.keys(errors).length > 0) {
@@ -125,13 +109,6 @@ export function validateSignup(raw: RawSignupInput): SignupValidation {
 
   return {
     ok: true,
-    value: {
-      name: name || null,
-      email: email || null,
-      phone,
-      emailOptIn: Boolean(email),
-      smsOptIn: Boolean(phone),
-      source,
-    },
+    value: { name: name || null, email, source },
   };
 }
