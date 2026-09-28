@@ -460,3 +460,38 @@ Blank Sendblue values behave the way blank Brevo values always did:
   an iPhone (expect a blue-bubble iMessage) and one to a non-iMessage number
   (expect SMS fallback with `was_downgraded: true` in the response/log).
 
+
+---
+
+## 13. Sign-in (Supabase Auth) — Google, Apple, email link
+
+Week 1 of the 12-week plan. Customers sign in at `/signin`; the header shows
+**Sign in** (or the user's initial → `/account` when signed in).
+
+| File | Purpose |
+|---|---|
+| `app/signin/page.tsx` + `SignInCard.tsx` | Branded sign-in: Continue with Google / Apple, or an email sign-in link. Providers that are off in Supabase show "Coming soon" instead of an error page. |
+| `app/auth/callback/route.ts` | Where Google/Apple/email links land; exchanges the code for a session cookie, then redirects to `next` (own paths only). |
+| `app/auth/signout/route.ts` | POST-only sign-out. |
+| `app/account/page.tsx` | Signed-in landing page (server-checked with `getUser()`). |
+| `proxy.ts` | Next 16 Proxy: refreshes the session cookie; sends signed-out visitors from `/account` to `/signin`. |
+| `lib/supabase/browser.ts`, `lib/supabase/server.ts` | `@supabase/ssr` clients (cookie-based sessions). |
+| `supabase/migrations/20260928000000_create_profiles.sql` | `profiles` table: name + role (`customer` / `staff` / `factory`), auto-created on first sign-in; users can't change their own role. |
+
+**Supabase dashboard setup (required):**
+1. Run the profiles migration in the SQL editor.
+2. Authentication → URL Configuration: Site URL `https://www.dyecutlab.com`;
+   Redirect URLs `http://localhost:3000/auth/callback`,
+   `https://www.dyecutlab.com/auth/callback`, `https://dyecutlab.com/auth/callback`
+   (+ the Vercel preview domain pattern if testing previews).
+3. Google: Google Cloud Console → OAuth client (Web). Authorized redirect URI =
+   `https://<project-ref>.supabase.co/auth/v1/callback`. Paste client ID/secret into
+   Authentication → Providers → Google.
+4. Apple: needs an Apple Developer Program membership. Create a Services ID +
+   Sign in with Apple key; paste into Authentication → Providers → Apple. The
+   generated client secret expires every 6 months — calendar a renewal.
+5. Email links use Supabase's built-in mailer, which is heavily rate-limited;
+   set a custom SMTP (e.g. Brevo SMTP) under Authentication → SMTP before launch.
+
+**Not done yet (plan week 1–2):** linking existing `clients`/`projects` rows to
+accounts, owner-scoped RLS on project tables, staff/factory pages.

@@ -5,7 +5,7 @@
    footer. */
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BoltIcon,
   CubeLogo,
@@ -16,6 +16,7 @@ import {
   TikTokIcon,
 } from "./Icons";
 import { START_PROJECT_HREF } from "../../lib/contact";
+import { getBrowserSupabase } from "../../lib/supabase/browser";
 
 /* Social profiles. A null href renders the icon dimmed with a "Soon"
    badge until the profile exists. */
@@ -69,26 +70,84 @@ export function Wordmark({
   );
 }
 
+type SessionUser = { initial: string; label: string } | null;
+
+/* Who is signed in, for the header only (display, not security — pages and
+   routes check on the server). undefined = still loading. */
+function useSessionUser() {
+  const [user, setUser] = useState<SessionUser | undefined>(undefined);
+
+  useEffect(() => {
+    const supabase = getBrowserSupabase();
+    const toUser = (u: { email?: string; user_metadata?: Record<string, unknown> } | null | undefined): SessionUser => {
+      if (!u) return null;
+      const meta = u.user_metadata ?? {};
+      const label = String(meta.full_name ?? meta.name ?? u.email ?? "Account");
+      return { initial: label.trim().charAt(0).toUpperCase() || "A", label };
+    };
+
+    supabase.auth.getSession().then(({ data }) => setUser(toUser(data.session?.user)));
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => setUser(toUser(session?.user)));
+    return () => data.subscription.unsubscribe();
+  }, []);
+
+  return user;
+}
+
+function UserIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
+    </svg>
+  );
+}
+
 export function Header() {
   const [open, setOpen] = useState(false);
+  const user = useSessionUser();
 
   return (
     <header className="relative z-40">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 pt-5 sm:px-6 lg:px-10">
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-2 px-4 pt-5 sm:px-6 lg:px-10">
         <Wordmark />
 
-        <button
-          type="button"
-          onClick={() => setOpen((value) => !value)}
-          aria-expanded={open}
-          aria-controls="site-menu"
-          aria-label={open ? "Close menu" : "Open menu"}
-          className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-black bg-[var(--dcl-lime)] transition active:scale-95"
-        >
-          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" aria-hidden="true">
-            {open ? <path d="M6 6l12 12M18 6 6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
-          </svg>
-        </button>
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          {/* Reserve the space while the session loads so nothing jumps. */}
+          {user === undefined ? (
+            <span aria-hidden="true" className="h-12 w-12 sm:w-[112px]" />
+          ) : user ? (
+            <Link
+              href="/account"
+              aria-label={`Your account (${user.label})`}
+              className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-black bg-[var(--dcl-lime)] text-[18px] font-black transition active:scale-95"
+            >
+              {user.initial}
+            </Link>
+          ) : (
+            <Link
+              href="/signin"
+              aria-label="Sign in"
+              className="flex h-12 w-12 items-center justify-center gap-2 rounded-full border-2 border-black bg-white text-[15px] font-extrabold transition hover:bg-black hover:text-white active:scale-95 sm:w-auto sm:px-5"
+            >
+              <UserIcon className="h-5 w-5" />
+              <span className="hidden sm:inline">Sign in</span>
+            </Link>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setOpen((value) => !value)}
+            aria-expanded={open}
+            aria-controls="site-menu"
+            aria-label={open ? "Close menu" : "Open menu"}
+            className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-black bg-[var(--dcl-lime)] transition active:scale-95"
+          >
+            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" aria-hidden="true">
+              {open ? <path d="M6 6l12 12M18 6 6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
+            </svg>
+          </button>
+        </div>
       </div>
 
       {open && (
@@ -106,6 +165,37 @@ export function Header() {
               {link.label}
             </Link>
           ))}
+
+          <div className="mt-1 border-t-2 border-dashed border-black/10 pt-1">
+            {user ? (
+              <>
+                <Link
+                  href="/account"
+                  onClick={() => setOpen(false)}
+                  className="block rounded-2xl px-4 py-3 text-[16px] font-extrabold transition hover:bg-[var(--dcl-lime-soft)]"
+                >
+                  My account
+                </Link>
+                <form action="/auth/signout" method="post">
+                  <button
+                    type="submit"
+                    className="block w-full rounded-2xl px-4 py-3 text-left text-[16px] font-extrabold text-zinc-600 transition hover:bg-[var(--dcl-lime-soft)] hover:text-black"
+                  >
+                    Sign out
+                  </button>
+                </form>
+              </>
+            ) : (
+              <Link
+                href="/signin"
+                onClick={() => setOpen(false)}
+                className="flex items-center justify-between rounded-2xl bg-[var(--dcl-lime)] px-4 py-3 text-[16px] font-extrabold"
+              >
+                Sign in
+                <UserIcon className="h-5 w-5" />
+              </Link>
+            )}
+          </div>
         </nav>
       )}
     </header>
