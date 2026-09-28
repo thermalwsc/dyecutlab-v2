@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getBrowserSupabase } from "../../lib/supabase/browser";
-import { ArrowIcon, Burst, Sparkle } from "../updates/Icons";
+import { ArrowIcon } from "../updates/Icons";
 
 /* Sign in / create account card.
 
@@ -39,20 +39,6 @@ function emailLooksValid(value: string) {
   return /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(value);
 }
 
-/* "Google and Apple sign-in aren't switched on yet — use your email and
-   password." Empty string while the check is still running. */
-function offProviderNote(providers: Record<Provider, boolean> | null): string {
-  if (!providers) return "";
-
-  const off = PROVIDERS.filter((provider) => !providers[provider]);
-  if (off.length === 0) return "";
-
-  const names = off.map((provider) => PROVIDER_LABELS[provider]);
-  const list =
-    names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names[0];
-
-  return `${list} sign-in ${off.length > 1 ? "aren't" : "isn't"} switched on yet — use your email and password.`;
-}
 
 function signInErrorMessage(error: { status?: number; code?: string }): string {
   switch (error.code) {
@@ -292,8 +278,7 @@ export default function SignInCard({ next, error }: { next: string; error: strin
           : "Create account";
 
   return (
-    <div className="relative rounded-[28px] bg-[var(--dcl-lime-soft)] p-5 sm:rounded-[32px] sm:p-8">
-      <Sparkle className="absolute -top-3 right-8 h-6 w-6 text-[var(--dcl-lime-deep)]" />
+    <div className="relative rounded-[28px] bg-white p-5 shadow-[0_30px_80px_-28px_rgba(10,10,10,0.28)] ring-1 ring-black/5 sm:rounded-[32px] sm:p-10">
 
       {mode === "forgot" ? (
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -307,7 +292,7 @@ export default function SignInCard({ next, error }: { next: string; error: strin
           </button>
         </div>
       ) : (
-        <div className="flex gap-1 rounded-full border-[3px] border-black bg-white p-1">
+        <div className="mb-5 flex gap-1 rounded-full bg-zinc-100 p-1">
           {tabs.map((tab) => (
             <button
               key={tab.value}
@@ -316,8 +301,8 @@ export default function SignInCard({ next, error }: { next: string; error: strin
               aria-pressed={mode === tab.value}
               className={`flex-1 rounded-full px-3 py-2.5 text-[14px] font-extrabold transition ${
                 mode === tab.value
-                  ? "bg-[#0a0a0a] text-white"
-                  : "text-zinc-700 hover:bg-[var(--dcl-lime-soft)]"
+                  ? "bg-white text-black shadow-sm"
+                  : "text-zinc-600 hover:text-black"
               }`}
             >
               {tab.label}
@@ -328,7 +313,7 @@ export default function SignInCard({ next, error }: { next: string; error: strin
 
       {mode !== "forgot" && (
         <>
-          <div className="mt-4 grid gap-2.5">
+          <div className="grid gap-3">
             {PROVIDERS.map((provider) => {
               const on = providers === null || providers[provider];
               const Logo = provider === "google" ? GoogleLogo : AppleLogo;
@@ -341,34 +326,42 @@ export default function SignInCard({ next, error }: { next: string; error: strin
                   disabled={disabled || !on}
                   className={
                     provider === "google"
-                      ? "flex h-14 w-full items-center justify-center gap-3 rounded-full border-[3px] border-black bg-white px-6 text-[16px] font-extrabold text-black transition hover:bg-zinc-50 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
-                      : "flex h-14 w-full items-center justify-center gap-3 rounded-full bg-[#0a0a0a] px-6 text-[16px] font-extrabold text-white transition hover:bg-zinc-800 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+                      ? "flex h-14 w-full items-center justify-center gap-3 rounded-full border-2 border-zinc-900 bg-white px-5 text-[15px] font-extrabold text-black transition hover:bg-zinc-50 active:scale-[0.99] disabled:cursor-not-allowed sm:h-16 sm:text-[16px]"
+                      : "flex h-14 w-full items-center justify-center gap-3 rounded-full bg-[#1c1c1c] px-5 text-[15px] font-extrabold text-white transition hover:bg-black active:scale-[0.99] disabled:cursor-not-allowed sm:h-16 sm:text-[16px]"
                   }
                 >
                   <Logo
                     className={provider === "google" ? "h-5 w-5 shrink-0" : "h-6 w-6 shrink-0 text-white"}
                   />
-                  {busy === provider
-                    ? `Opening ${PROVIDER_LABELS[provider]}…`
-                    : `Continue with ${PROVIDER_LABELS[provider]}`}
+                  <span className="whitespace-nowrap">
+                    {busy === provider ? (
+                      `Opening ${PROVIDER_LABELS[provider]}…`
+                    ) : (
+                      <>
+                        {/* Off: phones show just the name so the badge fits. */}
+                        <span className={on ? undefined : "hidden sm:inline"}>Continue with </span>
+                        {PROVIDER_LABELS[provider]}
+                      </>
+                    )}
+                  </span>
+                  {!on && (
+                    <span className="shrink-0 rounded-full bg-[var(--dcl-lime)] px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-black sm:text-[11px]">
+                      Coming soon
+                    </span>
+                  )}
                 </button>
               );
             })}
           </div>
 
-          {offProviderNote(providers) && (
-            <p className="mt-2 text-center text-[12px] font-medium text-zinc-600">
-              {offProviderNote(providers)}
-            </p>
-          )}
 
           <div
-            className="my-5 flex items-center gap-3 text-[12px] font-bold uppercase tracking-[0.14em] text-zinc-500"
+            className="my-6 flex items-center gap-4 text-[12px] font-extrabold uppercase tracking-[0.16em] text-zinc-500"
             aria-hidden="true"
           >
-            <span className="h-0.5 flex-1 rounded bg-black/10" />
+            <span className="h-px flex-1 bg-zinc-200" />
             or use email
-            <span className="h-0.5 flex-1 rounded bg-black/10" />
+            <span className="h-px flex-1 bg-zinc-200" />
           </div>
         </>
       )}
@@ -382,6 +375,20 @@ export default function SignInCard({ next, error }: { next: string; error: strin
           <label htmlFor="auth-email" className="block text-[13px] font-bold text-zinc-900">
             Email
           </label>
+          <div className="relative mt-1.5">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+            className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500"
+          >
+            <rect x="3" y="5" width="18" height="14" rx="2.5" />
+            <path d="m4 7 8 6 8-6" />
+          </svg>
           <input
             id="auth-email"
             name="email"
@@ -395,8 +402,9 @@ export default function SignInCard({ next, error }: { next: string; error: strin
             }}
             placeholder="you@brand.com"
             aria-describedby={fieldError ? "auth-field-error" : undefined}
-            className="mt-1.5 h-12 w-full rounded-2xl border-2 border-zinc-300 bg-white px-4 text-[15px] text-zinc-900 outline-none transition placeholder:text-zinc-400 hover:border-zinc-400 focus:border-black focus:ring-4 focus:ring-[var(--dcl-lime)]/50"
+            className="h-14 w-full rounded-2xl border-2 border-zinc-200 bg-white pl-12 pr-4 text-[15px] text-zinc-900 outline-none transition placeholder:text-zinc-400 hover:border-zinc-300 focus:border-black focus:ring-4 focus:ring-[var(--dcl-lime)]/50"
           />
+          </div>
         </div>
 
         {mode !== "forgot" && (
@@ -445,10 +453,10 @@ export default function SignInCard({ next, error }: { next: string; error: strin
         <button
           type="submit"
           disabled={disabled}
-          className="group flex h-14 w-full items-center justify-between rounded-full bg-[#0a0a0a] pl-7 pr-6 text-[16px] font-extrabold text-white transition hover:bg-zinc-800 active:scale-[0.99] disabled:opacity-60"
+          className="group !mt-5 flex h-14 w-full items-center justify-between rounded-full bg-[var(--dcl-lime)] pl-7 pr-6 text-[17px] font-extrabold text-black transition hover:brightness-95 active:scale-[0.99] disabled:opacity-60 sm:h-16"
         >
           <span>{submitLabel}</span>
-          <ArrowIcon className="h-5 w-5 text-[var(--dcl-lime)] transition-transform group-hover:translate-x-1" />
+          <ArrowIcon className="h-6 w-6 transition-transform group-hover:translate-x-1" />
         </button>
       </form>
 
@@ -486,7 +494,7 @@ export default function SignInCard({ next, error }: { next: string; error: strin
         </div>
       )}
 
-      <p className="mt-5 text-center text-[12px] leading-relaxed text-zinc-600">
+      <p className="mt-5 text-[13px] leading-relaxed text-zinc-600">
         {mode === "signup" ? (
           <>
             Creating an account is free. By continuing you agree to our{" "}
@@ -501,20 +509,20 @@ export default function SignInCard({ next, error }: { next: string; error: strin
           </>
         ) : (
           <>
-            Password sign-in is new. If you used email links before, tap{" "}
-            <button
-              type="button"
-              onClick={() => switchMode("forgot")}
-              className="font-bold text-black underline underline-offset-2"
-            >
-              Forgot your password?
-            </button>{" "}
-            once to set one.
+            New here? Tap <span className="font-bold text-black">Create account</span> above. By continuing you
+            agree to our{" "}
+            <Link href="/terms" className="font-bold text-black underline underline-offset-2">
+              Terms
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="font-bold text-black underline underline-offset-2">
+              Privacy Policy
+            </Link>
+            .
           </>
         )}
       </p>
 
-      <Burst className="pointer-events-none absolute -left-3 -top-4 h-8 w-8 -scale-x-100 text-[var(--dcl-lime-deep)]" />
     </div>
   );
 }
@@ -553,7 +561,7 @@ function PasswordInput({
           onChange={(event) => onChange(event.target.value)}
           minLength={MIN_PASSWORD_LENGTH}
           aria-describedby={hint ? `${id}-hint` : undefined}
-          className="mt-1.5 h-12 w-full rounded-2xl border-2 border-zinc-300 bg-white pl-4 pr-20 text-[15px] text-zinc-900 outline-none transition hover:border-zinc-400 focus:border-black focus:ring-4 focus:ring-[var(--dcl-lime)]/50"
+          className="mt-1.5 h-14 w-full rounded-2xl border-2 border-zinc-200 bg-white pl-4 pr-20 text-[15px] text-zinc-900 outline-none transition hover:border-zinc-300 focus:border-black focus:ring-4 focus:ring-[var(--dcl-lime)]/50"
         />
         <button
           type="button"
