@@ -99,13 +99,13 @@ function Hero() {
         </p>
 
         <ul className="mt-5 grid w-[62%] grid-cols-4 gap-[2%] sm:mt-8 sm:w-[56%] lg:w-[50%] lg:max-w-[560px]">
-          {CATEGORIES.map(({ label, src }, index) => (
+          {CATEGORIES.map(({ label, src }) => (
             <li key={label} className="relative flex flex-col items-center text-center">
-              {/* Lime motion-line doodles, as in the reference */}
-              {index === 0 && (
-                <Burst className="absolute -left-[14%] top-[6%] h-[30%] w-[30%] -scale-x-100 text-[var(--dcl-lime-deep)]" />
-              )}
-              <Burst className="absolute -right-[16%] top-[4%] h-[30%] w-[30%] text-[var(--dcl-lime-deep)]" />
+              {/* Lime motion-line doodle — one uniform flourish per icon, pinned
+                  to the icon's top-right corner. Offset/size scale with the icon
+                  (vw clamp), not the whole item, so the gap stays consistent on
+                  mobile and desktop. */}
+              <Burst className="absolute left-[calc(50%+clamp(24px,7vw,42px))] top-0 h-[clamp(14px,4.5vw,24px)] w-[clamp(14px,4.5vw,24px)] text-[var(--dcl-lime-deep)]" />
               <Image
                 src={src}
                 alt=""

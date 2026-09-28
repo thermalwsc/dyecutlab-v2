@@ -4,9 +4,9 @@ import LegalPage from "../updates/LegalPage";
 import { CONTACT } from "../../lib/contact";
 
 /* Linked from the footer and every SMS consent notice, and submitted to
-   Brevo / US carriers for SMS sender registration — the page must stay
-   publicly reachable at /privacy. Draft wording: have the client (or
-   counsel) review before relying on it. */
+   the SMS provider (Sendblue) / US carriers for sender registration — the
+   page must stay publicly reachable at /privacy. Draft wording: have the
+   client (or counsel) review before relying on it. */
 
 export const metadata: Metadata = {
   title: "Privacy Policy — DYE CUT LAB",

@@ -4,8 +4,8 @@ import {
   sendBrevoConfirmationEmail,
   sendStaffSignupEmail,
   syncBrevoContact,
-  type ChannelResult,
 } from "../../../lib/brevo";
+import type { ChannelResult } from "../../../lib/channels";
 import { clientKey, createRateLimiter } from "../../../lib/rateLimit";
 import { getPublicSupabase } from "../../../lib/supabasePublic";
 
@@ -13,10 +13,12 @@ import { getPublicSupabase } from "../../../lib/supabasePublic";
    POST /api/subscribers — landing page lead capture
 
    Order of operations (deliberate):
-   1. validate            → 400 with per-field errors
-   2. save to Supabase    → source of truth, blocks the success state
-   3. notify through Brevo → confirmation to the subscriber + team alert
-                              email; best effort, never blocks success
+   1. validate              → 400 with per-field errors
+   2. save to Supabase      → source of truth, blocks the success state
+   3. notify (Brevo email)  → confirmation to the subscriber + team alert
+                              email; best effort, never blocks success.
+                              SMS is Sendblue's job (lib/sendblue.ts) and is
+                              not sent from this route.
 
    The route talks to Supabase with the publishable (anon) key, so the
    subscribers RLS policy allows INSERT only. Duplicates are detected

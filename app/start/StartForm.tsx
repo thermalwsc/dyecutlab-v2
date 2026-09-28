@@ -22,11 +22,42 @@ import {
 
 type QuoteResponse = { ok?: boolean; error?: string; errors?: QuoteErrors };
 
-/* "+16465550100" → "(646) 555-0100"; other countries stay E.164. */
+/* "+14055550100" → "(405) 555-0100"; other countries stay E.164. */
 function formatPhone(e164: string) {
   const us = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(e164);
   return us ? `(${us[1]}) ${us[2]}-${us[3]}` : e164;
 }
+
+/* Prefilled customer text: kept around 300 chars so long `sms:` bodies
+   don't fail on some devices. The full 1000-char request is already saved
+   on the site, so a trimmed message notes that. */
+const CUSTOMER_SMS_BODY_MAX = 300;
+
+function buildCustomerSmsBody(description: string, phone: string) {
+  const flat = description.replace(/\s+/g, " ").trim();
+  const base = `New project: ${flat} | My number: ${phone}`;
+
+  if (base.length <= CUSTOMER_SMS_BODY_MAX) return base;
+
+  const suffix = " (full request saved on site)";
+  const phonePart = ` | My number: ${phone}${suffix}`;
+  const budget = CUSTOMER_SMS_BODY_MAX - "New project: ".length - phonePart.length - 1; // 1 for "…"
+  const trimmed = flat.slice(0, Math.max(0, budget)).trimEnd();
+
+  return `New project: ${trimmed}…${phonePart}`;
+}
+
+/* Same `sms:` form used by the JOIN / ORDER pills — works on iPhone + Android. */
+function customerSmsHref(body: string) {
+  return `sms:${CONTACT.phoneE164}?&body=${encodeURIComponent(body)}`;
+}
+
+type ConfirmationData = {
+  phone: string;
+  smsBody: string;
+  smsHref: string;
+  truncated: boolean;
+};
 
 export default function StartForm() {
   const [description, setDescription] = useState("");
@@ -36,7 +67,8 @@ export default function StartForm() {
   const [errors, setErrors] = useState<QuoteErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [confirmation, setConfirmation] = useState<ConfirmationData | null>(null);
+  const sentTo = confirmation?.phone ?? null;
 
   const phone = buildFullPhone(country.dial, localPhone);
 
@@ -72,7 +104,17 @@ export default function StartForm() {
         return;
       }
 
-      setSentTo(validation.value.phone);
+      const smsBody = buildCustomerSmsBody(
+        validation.value.description,
+        validation.value.phone
+      );
+
+      setConfirmation({
+        phone: validation.value.phone,
+        smsBody,
+        smsHref: customerSmsHref(smsBody),
+        truncated: validation.value.description.length > smsBody.length,
+      });
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
       console.error("QUOTE REQUEST ERROR:", error);
@@ -89,7 +131,7 @@ export default function StartForm() {
     setLocalPhone("");
     setErrors({});
     setFormError(null);
-    setSentTo(null);
+    setConfirmation(null);
   }
 
   return (
@@ -99,8 +141,13 @@ export default function StartForm() {
           <Headline done={Boolean(sentTo)} />
 
           <div className="mt-6 sm:mt-8">
-            {sentTo ? (
-              <Confirmation phone={sentTo} onReset={reset} />
+            {confirmation ? (
+              <Confirmation
+                phone={confirmation.phone}
+                smsBody={confirmation.smsBody}
+                smsHref={confirmation.smsHref}
+                onReset={reset}
+              />
             ) : (
               <form
                 onSubmit={submit}
@@ -195,13 +242,13 @@ export default function StartForm() {
                     disabled={submitting}
                     className="group flex h-14 w-full items-center justify-between rounded-full bg-[#0a0a0a] pl-7 pr-6 text-[16px] font-extrabold text-white transition hover:bg-zinc-800 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <span>{submitting ? "Sending…" : "Text me back"}</span>
+                    <span>{submitting ? "Saving…" : "Send it by text"}</span>
                     <ArrowIcon className="h-5 w-5 text-[var(--dcl-lime)] transition-transform group-hover:translate-x-1" />
                   </button>
 
                   <p className="flex items-center justify-center gap-2 text-center text-[13px] font-bold text-zinc-900">
                     <ChatDotsIcon className="h-5 w-5 shrink-0" />
-                    Real people. Real replies. Zero bots.
+                    We save it first, then your Messages app opens. Real humans, no bots.
                   </p>
                 </div>
               </form>
@@ -243,8 +290,8 @@ function Headline({ done }: { done: boolean }) {
 
       <p className="mt-3 max-w-[34ch] text-[clamp(15px,4.2vw,21px)] font-semibold leading-snug text-zinc-900 sm:mt-4">
         {done
-          ? "Expect a text from us shortly."
-          : `${CONTACT.personName} from our team texts you back — fast. A real human, no bots, no waiting on hold.`}
+          ? "Your request is saved — now send it by text so our team can reply."
+          : "Send it straight to our team by text — fast. A real human replies, no bots, no waiting on hold."}
       </p>
     </div>
   );
@@ -263,8 +310,8 @@ function Highlight({ children }: { children: React.ReactNode }) {
 
 const STEPS = [
   { title: "Tell us what you need", body: "A line or two is plenty — what it is, how many, rough size." },
-  { title: `${CONTACT.personName} texts you`, body: "A real person on our team picks it up and texts you to nail the details." },
-  { title: "Get your quote", body: "Pricing, options and timing — straight to your phone." },
+  { title: "You text us", body: "Your Messages app opens with everything prefilled — just tap send." },
+  { title: "Get your quote", body: "Our team replies straight to your phone with pricing, options and timing." },
 ];
 
 function HowItWorks() {
@@ -310,7 +357,31 @@ function HowItWorks() {
   );
 }
 
-function Confirmation({ phone, onReset }: { phone: string; onReset: () => void }) {
+function Confirmation({
+  phone,
+  smsBody,
+  smsHref,
+  onReset,
+}: {
+  phone: string;
+  smsBody: string;
+  smsHref: string;
+  onReset: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  async function copyMessage() {
+    try {
+      await navigator.clipboard.writeText(smsBody);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* Clipboard API unavailable (older browsers) — the message text
+         below stays selectable so it can be copied by hand. */
+      setCopied(false);
+    }
+  }
+
   return (
     <div
       role="status"
@@ -321,21 +392,56 @@ function Confirmation({ phone, onReset }: { phone: string; onReset: () => void }
         <PhoneChatIllustration className="h-20 w-20 shrink-0 text-black sm:h-24 sm:w-24" />
         <div className="min-w-0">
           <p className="text-[clamp(20px,5.6vw,28px)] font-black leading-tight tracking-[-0.03em]">
-            Keep your phone close.
+            Your request is saved.
           </p>
           <p className="mt-1 text-[15px] font-semibold leading-snug text-zinc-800">
-            {CONTACT.personName} from DYE CUT LAB will text{" "}
+            Now send it by text from{" "}
             <span className="whitespace-nowrap font-extrabold text-black">{formatPhone(phone)}</span>{" "}
-            to talk through your project.
+            to{" "}
+            <span className="whitespace-nowrap font-extrabold text-black">{CONTACT.phoneDisplay}</span>{" "}
+            so our team can reply.
           </p>
         </div>
       </div>
 
-      <p className="mt-5 rounded-2xl border-2 border-black bg-white px-4 py-3 text-[14px] font-semibold leading-snug">
-        Save {CONTACT.personName}&rsquo;s number so you know it&rsquo;s us:{" "}
-        <a href={`tel:${CONTACT.phoneE164}`} className="whitespace-nowrap font-extrabold underline decoration-[var(--dcl-lime-deep)] decoration-2 underline-offset-4">
-          {CONTACT.phoneDisplay}
-        </a>
+      {/* iPhone-safe path: a real anchor the customer taps. Browsers can
+          block scripted navigation to `sms:` after an async save, so no
+          automatic open is attempted — this button is the main path. */}
+      <a
+        href={smsHref}
+        className="group mt-5 flex h-14 w-full items-center justify-between rounded-full bg-[#0a0a0a] pl-7 pr-6 text-[16px] font-extrabold text-white transition hover:bg-zinc-800 active:scale-[0.99]"
+      >
+        <span>Open Messages to send it</span>
+        <ArrowIcon className="h-5 w-5 text-[var(--dcl-lime)] transition-transform group-hover:translate-x-1" />
+      </a>
+
+      {/* Desktop fallback: `sms:` links do nothing on most desktops, so the
+          number + message stay visible and copyable for sending from a phone. */}
+      <div className="mt-4 rounded-2xl border-2 border-black bg-white px-4 py-3">
+        <p className="text-[14px] font-semibold leading-snug">
+          Texting from a computer? Send this from your phone to{" "}
+          <a
+            href={`tel:${CONTACT.phoneE164}`}
+            className="whitespace-nowrap font-extrabold underline decoration-[var(--dcl-lime-deep)] decoration-2 underline-offset-4"
+          >
+            {CONTACT.phoneDisplay}
+          </a>
+        </p>
+        <p className="mt-2 rounded-xl bg-[var(--dcl-lime-soft)] px-3 py-2 text-[13px] leading-relaxed text-zinc-800">
+          {smsBody}
+        </p>
+        <button
+          type="button"
+          onClick={copyMessage}
+          className="mt-3 h-11 rounded-full border-[3px] border-black bg-white px-6 text-[14px] font-extrabold transition hover:bg-black hover:text-white"
+        >
+          {copied ? "Copied!" : "Copy message"}
+        </button>
+      </div>
+
+      <p className="mt-4 text-[12px] leading-relaxed text-zinc-600">
+        {QUOTE_SMS_CONSENT_COPY}
+        <SmsLegalLinks />
       </p>
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row">

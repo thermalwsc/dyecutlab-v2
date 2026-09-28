@@ -4,9 +4,10 @@ import LegalPage from "../updates/LegalPage";
 import { CONTACT } from "../../lib/contact";
 
 /* Linked from the footer and every SMS consent notice, and submitted to
-   Brevo / US carriers for SMS sender registration — the page must stay
-   publicly reachable at /terms (SMS section anchored at #sms). Draft
-   wording: have the client (or counsel) review before relying on it. */
+   the SMS provider (Sendblue) / US carriers for sender registration — the
+   page must stay publicly reachable at /terms (SMS section anchored at
+   #sms). Draft wording: have the client (or counsel) review before relying
+   on it. */
 
 export const metadata: Metadata = {
   title: "Terms & Conditions — DYE CUT LAB",

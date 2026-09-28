@@ -2,8 +2,8 @@
    TEXT-A-KEYWORD CONFIG — landing page "Text JOIN / ORDER" CTAs
 =========================================================
 
-   The pills show the team's real number (lib/contact.ts), so tapping
-   one opens the visitor's SMS app to text a real person.
+   The pills show the Sendblue business line (lib/contact.ts), so tapping
+   one opens the visitor's SMS app to text the business number.
 
    ⚠️ Keyword handling is MANUAL for now — see LANDING_PAGE_NOTES.md §10.
    Nothing reads inbound texts automatically: staff see "ORDER" / "JOIN"

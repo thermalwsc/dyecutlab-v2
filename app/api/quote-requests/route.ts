@@ -3,7 +3,8 @@ import {
   validateQuoteRequest,
   type RawQuoteInput,
 } from "../../../lib/quoteRequests";
-import { sendStaffQuoteEmail, sendStaffQuoteSms } from "../../../lib/brevo";
+import { sendStaffQuoteEmail } from "../../../lib/brevo";
+import { sendStaffQuoteSms } from "../../../lib/sendblue";
 import { clientKey, createRateLimiter } from "../../../lib/rateLimit";
 import { getPublicSupabase } from "../../../lib/supabasePublic";
 
@@ -15,7 +16,8 @@ import { getPublicSupabase } from "../../../lib/supabasePublic";
    Order of operations (same shape as /api/subscribers):
    1. validate              → 400 with per-field errors
    2. save to Supabase      → source of truth, blocks the success state
-   3. notify staff (Brevo)  → SMS + email in parallel, best effort
+   3. notify staff          → Sendblue SMS (iMessage) + Brevo email in
+                              parallel, best effort
 
    Nothing is sent to the customer automatically — a real person texts
    them back. Every accepted request texts staff, so the throttle is

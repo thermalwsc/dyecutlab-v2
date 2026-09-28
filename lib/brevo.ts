@@ -2,7 +2,9 @@
    BREVO (formerly Sendinblue) — server-side client
 =========================================================
 
-   Single provider for BOTH the email and the SMS confirmation.
+   EMAIL ONLY. Sendblue (lib/sendblue.ts) is the SMS / iMessage
+   provider — no text message goes through Brevo any more.
+   BREVO_API_KEY is still used for email and for the contact mirror.
 
    Uses the official REST API directly with fetch (no SDK
    dependency). Server-only: never import this from a
@@ -10,13 +12,13 @@
 
    Docs:
    - https://developers.brevo.com/docs/send-a-transactional-email
-   - https://developers.brevo.com/reference/send-async-transactional-sms
    - https://developers.brevo.com/reference/create-contact
 
    Every function resolves with a status instead of throwing so a
    provider failure can never block the user-facing success state.
 */
 
+import { type ChannelResult, errorMessage } from "./channels";
 import { CONTACT } from "./contact";
 
 const BREVO_API_BASE = "https://api.brevo.com/v3";
@@ -24,22 +26,10 @@ const BREVO_TIMEOUT_MS = 8000;
 
 const CONFIRMATION_SUBJECT = "You're on the DYE CUT LAB update list";
 
-export type ChannelStatus = "sent" | "skipped" | "failed";
-
-export type ChannelResult = {
-  status: ChannelStatus;
-  detail?: string;
-};
-
 type EmailConfig = {
   apiKey: string | null;
   senderEmail: string | null;
   senderName: string;
-};
-
-type SmsConfig = {
-  apiKey: string | null;
-  sender: string;
 };
 
 function getEmailConfig(): EmailConfig {
@@ -50,21 +40,10 @@ function getEmailConfig(): EmailConfig {
   };
 }
 
-function getSmsConfig(): SmsConfig {
-  return {
-    apiKey: process.env.BREVO_API_KEY?.trim() || null,
-    sender: process.env.BREVO_SMS_SENDER?.trim() || "DYECUTLAB",
-  };
-}
-
 function getListId(): number | null {
   const parsed = Number.parseInt(process.env.BREVO_LIST_ID ?? "", 10);
 
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
 }
 
 function escapeHtml(value: string) {
@@ -248,15 +227,16 @@ You're receiving this because you signed up for product updates at dyecutlab.com
 =========================================================
 
    Sent to the team (not the customer) the moment a quote request is
-   saved, so someone can text the customer back directly. SMS is the
-   primary ping; email is a backup and a searchable record.
+   saved, so someone can text the customer back directly. Email is the
+   searchable record; the SMS ping is sent by Sendblue, which resolves
+   STAFF_NOTIFY_PHONE itself (see lib/sendblue.ts).
 
-   Destinations default to the business contact details in
+   The staff email defaults to the business contact email in
    lib/contact.ts and can be overridden per environment with
-   STAFF_NOTIFY_PHONE / STAFF_NOTIFY_EMAIL.
+   STAFF_NOTIFY_EMAIL. The staff SMS phone (STAFF_NOTIFY_PHONE,
+   resolved in lib/sendblue.ts) has no default and must never fall
+   back to the public business number.
 */
-
-const STAFF_SMS_DESCRIPTION_MAX = 280;
 
 export type QuoteNotification = {
   description: string;
@@ -265,44 +245,8 @@ export type QuoteNotification = {
 
 function getStaffDestinations() {
   return {
-    phone: process.env.STAFF_NOTIFY_PHONE?.trim() || CONTACT.phoneE164,
     email: process.env.STAFF_NOTIFY_EMAIL?.trim() || CONTACT.email,
   };
-}
-
-export async function sendStaffQuoteSms(
-  input: QuoteNotification
-): Promise<ChannelResult> {
-  const { apiKey, sender } = getSmsConfig();
-  const { phone: staffPhone } = getStaffDestinations();
-
-  if (!apiKey) {
-    return { status: "skipped", detail: "BREVO_API_KEY is not configured." };
-  }
-
-  const summary =
-    input.description.length > STAFF_SMS_DESCRIPTION_MAX
-      ? `${input.description.slice(0, STAFF_SMS_DESCRIPTION_MAX - 1)}…`
-      : input.description;
-
-  try {
-    await brevoPost("/transactionalSMS/send", apiKey, {
-      recipient: staffPhone,
-      sender,
-      content: `Hi ${CONTACT.personName} - new DYE CUT LAB quote request.\nText them: ${input.phone}\n\n"${summary}"`,
-      /* Internal alert with no opt-out keyword, so it stays transactional
-         (no marketing sending-hour restrictions). */
-      type: "transactional",
-      /* Customer descriptions can contain emoji / accents. */
-      unicodeEnabled: true,
-      tag: "quote_request_staff",
-    });
-
-    return { status: "sent" };
-  } catch (error) {
-    console.error("BREVO STAFF SMS ERROR:", error);
-    return { status: "failed", detail: errorMessage(error) };
-  }
 }
 
 export async function sendStaffQuoteEmail(

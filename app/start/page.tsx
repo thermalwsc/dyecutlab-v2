@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { brandFont } from "../fonts";
 import StartForm from "./StartForm";
-import { CONTACT } from "../../lib/contact";
 import { Footer, Header, TrustRow } from "../updates/SiteChrome";
 
 /* TEMPORARY stand-in for the DICI chat (/app) while it is being fixed.
@@ -10,7 +9,7 @@ import { Footer, Header, TrustRow } from "../updates/SiteChrome";
 export const metadata: Metadata = {
   title: "Start Your Project — DYE CUT LAB",
   description:
-    `Tell us what you want made. ${CONTACT.personName} from DYE CUT LAB texts you back, fast.`,
+    "Tell us what you want made. We save it, then you send it by text and our team replies fast.",
 };
 
 export default function StartPage() {

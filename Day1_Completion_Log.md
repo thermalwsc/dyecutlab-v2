@@ -37,7 +37,7 @@ Times are an approximate split of the 5 hrs 35 min total run time, weighted by t
 | A5 | Temporary "Start your project" page (`/start`) — UI | ☑ Done | 50 min | One-screen form: "What do you want made?" + required mobile number + "Text me back"; "How it works" card; branded "We got it." confirmation. Reuses header/trust row/footer, icons, `PhoneField`, font and button styles. |
 | A6 | Quote-request backend | ☑ Done | 45 min | `quote_requests` table (separate from `subscribers`, INSERT-only RLS) — migration `20260925010000_create_quote_requests.sql`; `POST /api/quote-requests` (validate → save → notify); `lib/quoteRequests.ts`; rate limit 3/10 min + honeypot. Shared helpers extracted: `lib/rateLimit.ts`, `lib/supabasePublic.ts`. |
 | A7 | Staff notifications for `/start` + Gilbert personalisation | ☑ Done | 20 min | Brevo staff SMS + email ("Hi Gilbert — new quote request", customer number + description). Contact details in `lib/contact.ts`; "Gilbert from our team texts you back" copy on `/start`. |
-| A8 | Real phone number on JOIN / ORDER pills | ☑ Done | 10 min | Placeholder 555 number replaced with (646) 991-6338; pills tap-to-text. Handling is manual (texts go to Gilbert's phone); web form stays open as the reliable way to join. |
+| A8 | Real phone number on JOIN / ORDER pills | ☑ Done | 10 min | Placeholder 555 number replaced with the business line (now (405) 563-5396 — see number swap note); pills tap-to-text. Handling is manual; web form stays open as the reliable way to join. |
 | A9 | Brevo inbound-SMS research & guidance | ☑ Done | 20 min | Confirmed from Brevo docs: no documented webhook for texts customers send first (Conversations webhooks exclude SMS; "Replied" webhook only for replies to Brevo-sent SMS). Options A/B/C written up (Brevo inbox manual / ask Brevo support / Twilio-Telnyx for automation). |
 | A10 | Brevo API key + sender configuration | ☑ Done | 10 min | Key validated (read-only API call, account Dye Cut Lab LLC); verified sender `dyecutlab@gmail.com` set as `BREVO_SENDER_EMAIL`. Found: Free plan has no SMS credits. |
 | A11 | Supabase `quote_requests` migration applied | ☑ Done | 10 min | Developer ran the migration in the SQL editor; verified from the app side (table exists, RLS blocks invalid writes). |
@@ -61,7 +61,7 @@ List anything not finished today, to be picked up in the Day 5 buffer slot:
 
 ### Blockers / questions for client
 - Keyword texts: stay manual via Gilbert's phone, or automate (Brevo support answer / Twilio)?
-- Does Gilbert text customers back from (646) 991-6338? The `/start` confirmation promises this.
+- (Superseded by Sendblue number swap — personal number removed from the site; public line is now (405) 563-5396.) Does the team text customers back from the business line? The `/start` confirmation promises this.
 - Copy sign-off: `/start` headline "Tell us what you're making.", "Text me back", "Real people. Real replies. Zero bots.", How-it-works steps, and all SMS consent wording.
 - Brevo: buy SMS credits? Start US toll-free registration now?
 - Sender email on own domain (e.g. hello@dyecutlab.com) — is the domain available for DNS records?
@@ -72,4 +72,4 @@ List anything not finished today, to be picked up in the Day 5 buffer slot:
 - Confirm the previously exposed OpenAI key was revoked in the OpenAI dashboard.
 
 ### Summary (for client update, if sharing)
-The landing page has been redesigned to the new lime/black brand direction, with working beta sign-ups (saved to Supabase, confirmation + team alert emails via Brevo) and tap-to-text JOIN / ORDER buttons to (646) 991-6338. A temporary "Start your project" page replaces the DICI chat for now: customers describe their project and leave a number, the request is saved and Gilbert is alerted by email to text them back. Ready for a Vercel Preview once the two Brevo environment variables are added.
+The landing page has been redesigned to the new lime/black brand direction, with working beta sign-ups (saved to Supabase, confirmation + team alert emails via Brevo) and tap-to-text JOIN / ORDER buttons to the business line (now (405) 563-5396). A temporary "Start your project" page replaces the DICI chat for now: customers describe their project and leave a number, the request is saved and Gilbert is alerted by email to text them back. Ready for a Vercel Preview once the two Brevo environment variables are added.
