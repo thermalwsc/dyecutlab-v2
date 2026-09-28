@@ -5,10 +5,13 @@ import { NextResponse, type NextRequest } from "next/server";
 
    1. Keeps the Supabase sign-in session fresh: refreshed tokens are written
       back to the response cookies on every page request.
-   2. Optimistic guard: signed-out visitors to /account are sent to /signin.
-      The account page re-checks on the server — this is only a fast path. */
+   2. Optimistic guard: signed-out visitors to the signed-in areas are sent to
+      /signin. The pages themselves re-check the session AND the role with
+      lib/auth/guard.ts — this is only a fast path, never the decision. */
 
-const SIGNED_IN_ONLY = ["/account"];
+/* Signed-in areas. /set-password is deliberately NOT here: an invite or reset
+   link must be able to land on it without a session. */
+const SIGNED_IN_ONLY = ["/account", "/admin", "/factory"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });

@@ -4,11 +4,13 @@ import { brandFont } from "../fonts";
 import SignInCard from "./SignInCard";
 import { Footer, Header } from "../updates/SiteChrome";
 import { Burst } from "../updates/Icons";
+import { getViewer } from "../../lib/auth/viewer";
+import { resolveLandingPath } from "../../lib/auth/roles";
 import { getServerSupabase, safeNextPath } from "../../lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "Sign in — DYE CUT LAB",
-  description: "Sign in to DYE CUT LAB with Google, Apple or your email.",
+  description: "Sign in to DYE CUT LAB with your email and password, or continue with Google.",
 };
 
 type Params = { searchParams: Promise<Record<string, string | string[] | undefined>> };
@@ -18,10 +20,13 @@ export default async function SignInPage({ searchParams }: Params) {
   const one = (key: string) => (typeof params[key] === "string" ? (params[key] as string) : null);
   const next = safeNextPath(one("next"));
 
-  /* Already signed in → no need to show the form. */
+  /* Already signed in with an active account → straight to their own area
+     (/account, /admin or /factory). A disabled or banned account stays on this
+     page with an explanation from the card instead of bouncing back and forth
+     between here and a protected page. */
   const supabase = await getServerSupabase();
-  const { data } = await supabase.auth.getClaims();
-  if (data?.claims?.sub) redirect(next);
+  const viewer = await getViewer(supabase);
+  if (viewer.user && viewer.role) redirect(resolveLandingPath(viewer.role, next));
 
   return (
     <div className={`${brandFont.className} dcl-landing`}>
@@ -46,7 +51,8 @@ export default async function SignInPage({ searchParams }: Params) {
               </span>
             </h1>
             <p className="mt-4 max-w-[34ch] text-[clamp(15px,4.2vw,21px)] font-semibold leading-snug text-zinc-900">
-              Sign in to keep your packaging projects, quotes and orders in one place.
+              Sign in with your email and password, or with Google — your projects, quotes and orders stay in
+              one place.
             </p>
           </div>
 

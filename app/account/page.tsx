@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { brandFont } from "../fonts";
 import { Footer, Header } from "../updates/SiteChrome";
 import { ArrowIcon, Burst } from "../updates/Icons";
 import { START_PROJECT_HREF } from "../../lib/contact";
-import { getServerSupabase } from "../../lib/supabase/server";
+import { ROLE_LABELS } from "../../lib/auth/roles";
+import { requireRole } from "../../lib/auth/guard";
 
 export const metadata: Metadata = {
   title: "Your account — DYE CUT LAB",
@@ -14,33 +14,18 @@ export const metadata: Metadata = {
 
 const PROVIDER_LABEL: Record<string, string> = {
   google: "Google",
-  apple: "Apple",
-  email: "email link",
+  email: "email + password",
 };
 
 export default async function AccountPage() {
-  const supabase = await getServerSupabase();
+  /* The guard is the only way in: the session is verified with the Auth server,
+     a switched-off account is signed out, and staff or factory accounts are sent
+     to their own area instead of this one. */
+  const { viewer, user, profile, role } = await requireRole(["customer"], { next: "/account" });
 
-  /* getUser() asks the Auth server, so a stale or forged cookie can't get in. */
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/signin?next=/account");
-
-  /* Role lives in public.profiles (see the auth migration). If the table
-     isn't there yet, fall back to "customer" instead of failing the page. */
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name, role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const meta = user.user_metadata ?? {};
-  const name: string =
-    profile?.full_name || meta.full_name || meta.name || user.email?.split("@")[0] || "there";
+  const name: string = profile?.full_name || user.email?.split("@")[0] || "there";
   const firstName = name.split(" ")[0];
-  const provider = PROVIDER_LABEL[user.app_metadata?.provider ?? ""] ?? "email link";
-  const role: string = profile?.role ?? "customer";
+  const provider = PROVIDER_LABEL[user.provider ?? ""] ?? "email + password";
 
   return (
     <div className={`${brandFont.className} dcl-landing`}>
@@ -95,13 +80,22 @@ export default async function AccountPage() {
                   <dt className="text-[12px] font-bold uppercase tracking-[0.12em] text-zinc-500">Signed in with</dt>
                   <dd className="font-extrabold">{provider}</dd>
                 </div>
-                {role !== "customer" && (
-                  <div>
-                    <dt className="text-[12px] font-bold uppercase tracking-[0.12em] text-zinc-500">Role</dt>
-                    <dd className="font-extrabold capitalize">{role}</dd>
-                  </div>
-                )}
+                <div>
+                  <dt className="text-[12px] font-bold uppercase tracking-[0.12em] text-zinc-500">Account type</dt>
+                  <dd className="font-extrabold">{ROLE_LABELS[role]}</dd>
+                </div>
               </dl>
+
+              {viewer.missingProfile && (
+                <p className="mt-4 rounded-2xl border-2 border-amber-300 bg-amber-50 px-4 py-3 text-[13px] font-medium text-amber-800">
+                  We couldn&rsquo;t find your account record, so you&rsquo;re seeing a bare-bones account. Email
+                  {" "}
+                  <a href="mailto:dyecutlab@gmail.com" className="font-bold underline underline-offset-2">
+                    dyecutlab@gmail.com
+                  </a>{" "}
+                  and we&rsquo;ll sort it out.
+                </p>
+              )}
 
               <form action="/auth/signout" method="post" className="mt-6">
                 <button

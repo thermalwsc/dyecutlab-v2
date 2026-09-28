@@ -5,7 +5,7 @@
    footer. */
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   BoltIcon,
   CubeLogo,
@@ -16,6 +16,7 @@ import {
   TikTokIcon,
 } from "./Icons";
 import { START_PROJECT_HREF } from "../../lib/contact";
+import { ROLE_HOME } from "../../lib/auth/roles";
 import { getBrowserSupabase } from "../../lib/supabase/browser";
 
 /* Social profiles. A null href renders the icon dimmed with a "Soon"
@@ -70,28 +71,84 @@ export function Wordmark({
   );
 }
 
-type SessionUser = { initial: string; label: string } | null;
+type SessionUser = {
+  initial: string;
+  label: string;
+  email: string;
+  /** Where this account belongs — /account, /admin or /factory. */
+  home: string;
+  homeLabel: string;
+} | null;
 
-/* Who is signed in, for the header only (display, not security — pages and
-   routes check on the server). undefined = still loading. */
-function useSessionUser() {
-  const [user, setUser] = useState<SessionUser | undefined>(undefined);
+/* Who is signed in and where they belong, for the header only (display, not
+   security — pages and routes check on the server). undefined = still loading.
+   The destination comes from /api/auth/home, so the header can't disagree with
+   the role-based landing pages. */
+function useSessionUser(): SessionUser | undefined {
+  const [session, setSession] = useState<
+    ({ id: string; label: string; initial: string; email: string } | null) | undefined
+  >(undefined);
+  /* null until the server tells us where this account belongs; a customer
+     account is the fallback while it loads. */
+  const [home, setHome] = useState<{ path: string; label: string } | null>(null);
 
   useEffect(() => {
     const supabase = getBrowserSupabase();
-    const toUser = (u: { email?: string; user_metadata?: Record<string, unknown> } | null | undefined): SessionUser => {
-      if (!u) return null;
-      const meta = u.user_metadata ?? {};
-      const label = String(meta.full_name ?? meta.name ?? u.email ?? "Account");
-      return { initial: label.trim().charAt(0).toUpperCase() || "A", label };
+    const toSession = (
+      user: { id: string; email?: string; user_metadata?: Record<string, unknown> } | null | undefined
+    ) => {
+      if (!user) return null;
+      const meta = user.user_metadata ?? {};
+      const label = String(meta.full_name ?? meta.name ?? user.email ?? "Account");
+      return {
+        id: user.id,
+        label,
+        initial: label.trim().charAt(0).toUpperCase() || "A",
+        email: user.email ?? "",
+      };
     };
 
-    supabase.auth.getSession().then(({ data }) => setUser(toUser(data.session?.user)));
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => setUser(toUser(session?.user)));
+    supabase.auth.getSession().then(({ data }) => setSession(toSession(data.session?.user)));
+    const { data } = supabase.auth.onAuthStateChange((_event, next) => setSession(toSession(next?.user)));
     return () => data.subscription.unsubscribe();
   }, []);
 
-  return user;
+  const sessionId = session?.id ?? null;
+
+  useEffect(() => {
+    if (!sessionId) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/home", { cache: "no-store" });
+        const body = (res.ok ? await res.json() : {}) as { path?: unknown };
+        const path = typeof body.path === "string" && body.path.startsWith("/") ? body.path : ROLE_HOME.customer.path;
+        if (cancelled) return;
+
+        setHome({
+          path,
+          label: path.startsWith("/admin")
+            ? ROLE_HOME.dcl_admin.label
+            : path.startsWith("/factory")
+              ? ROLE_HOME.factory.label
+              : ROLE_HOME.customer.label,
+        });
+      } catch {
+        /* keep the customer default */
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+
+  if (session === undefined) return undefined;
+  if (!session) return null;
+
+  const destination = home ?? { path: ROLE_HOME.customer.path, label: ROLE_HOME.customer.label };
+  return { ...session, home: destination.path, homeLabel: destination.label };
 }
 
 function UserIcon({ className }: { className?: string }) {
@@ -105,7 +162,29 @@ function UserIcon({ className }: { className?: string }) {
 
 export function Header() {
   const [open, setOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
   const user = useSessionUser();
+
+  /* The account menu is a small popover: close it on Escape or a click outside
+     so it behaves like the menu people expect on desktop. */
+  useEffect(() => {
+    if (!accountOpen) return;
+
+    function onPointerDown(event: PointerEvent) {
+      if (!accountRef.current?.contains(event.target as Node)) setAccountOpen(false);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setAccountOpen(false);
+    }
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [accountOpen]);
 
   return (
     <header className="relative z-40">
@@ -117,13 +196,50 @@ export function Header() {
           {user === undefined ? (
             <span aria-hidden="true" className="h-12 w-12 sm:w-[112px]" />
           ) : user ? (
-            <Link
-              href="/account"
-              aria-label={`Your account (${user.label})`}
-              className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-black bg-[var(--dcl-lime)] text-[18px] font-black transition active:scale-95"
-            >
-              {user.initial}
-            </Link>
+            <div ref={accountRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setAccountOpen((value) => !value)}
+                aria-expanded={accountOpen}
+                aria-haspopup="menu"
+                aria-label={`Your account (${user.label})`}
+                className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-black bg-[var(--dcl-lime)] text-[18px] font-black transition active:scale-95"
+              >
+                {user.initial}
+              </button>
+
+              {accountOpen && (
+                <div
+                  role="menu"
+                  aria-label="Account"
+                  className="absolute right-0 top-[calc(100%+10px)] w-[min(280px,calc(100vw-32px))] rounded-[24px] border-2 border-black bg-white p-2 text-left shadow-[6px_6px_0_#0a0a0a]"
+                >
+                  <p className="px-4 pb-0.5 pt-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-zinc-500">
+                    Signed in
+                  </p>
+                  <p className="break-all px-4 pb-2 text-[14px] font-extrabold text-black">{user.email}</p>
+
+                  <Link
+                    href={user.home}
+                    onClick={() => setAccountOpen(false)}
+                    role="menuitem"
+                    className="block rounded-2xl px-4 py-3 text-[16px] font-extrabold transition hover:bg-[var(--dcl-lime-soft)]"
+                  >
+                    {user.homeLabel}
+                  </Link>
+
+                  <form action="/auth/signout" method="post">
+                    <button
+                      type="submit"
+                      role="menuitem"
+                      className="block w-full rounded-2xl px-4 py-3 text-left text-[16px] font-extrabold text-zinc-600 transition hover:bg-[var(--dcl-lime-soft)] hover:text-black"
+                    >
+                      Sign out
+                    </button>
+                  </form>
+                </div>
+              )}
+            </div>
           ) : (
             <Link
               href="/signin"
@@ -137,7 +253,10 @@ export function Header() {
 
           <button
             type="button"
-            onClick={() => setOpen((value) => !value)}
+            onClick={() => {
+              setOpen((value) => !value);
+              setAccountOpen(false);
+            }}
             aria-expanded={open}
             aria-controls="site-menu"
             aria-label={open ? "Close menu" : "Open menu"}
@@ -169,12 +288,13 @@ export function Header() {
           <div className="mt-1 border-t-2 border-dashed border-black/10 pt-1">
             {user ? (
               <>
+                <p className="break-all px-4 pb-2 text-[13px] font-bold text-zinc-600">{user.email}</p>
                 <Link
-                  href="/account"
+                  href={user.home}
                   onClick={() => setOpen(false)}
                   className="block rounded-2xl px-4 py-3 text-[16px] font-extrabold transition hover:bg-[var(--dcl-lime-soft)]"
                 >
-                  My account
+                  {user.homeLabel}
                 </Link>
                 <form action="/auth/signout" method="post">
                   <button
