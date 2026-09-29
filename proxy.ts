@@ -11,7 +11,10 @@ import { NextResponse, type NextRequest } from "next/server";
 
 /* Signed-in areas. /set-password is deliberately NOT here: an invite or reset
    link must be able to land on it without a session. */
-const SIGNED_IN_ONLY = ["/account", "/admin", "/factory"];
+/* /app and /project are the legacy DICI chat + project pages: their data is
+   now account-scoped (20260929000000_lock_project_tables.sql), so they need a
+   session too. */
+const SIGNED_IN_ONLY = ["/account", "/admin", "/factory", "/app", "/project"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });

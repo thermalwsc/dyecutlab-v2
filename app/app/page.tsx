@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { supabase } from "../../lib/supabase";
+import { getBrowserSupabase } from "../../lib/supabase/browser";
 
 type Stage = "home" | "capture" | "conversation" | "project";
 
@@ -606,7 +606,7 @@ function ClientCapture({
     setError(null);
 
     try {
-      const { data, error: saveError } = await supabase
+      const { data, error: saveError } = await getBrowserSupabase()
         .from("clients")
         .upsert(
           {
@@ -892,7 +892,7 @@ function Conversation({
 
     try {
       if (next.id) {
-        const { error } = await supabase
+        const { error } = await getBrowserSupabase()
           .from("projects")
           .update(payload)
           .eq("id", next.id);
@@ -905,7 +905,7 @@ function Conversation({
 
       const { updated_at, ...insertPayload } = payload;
 
-      const { data, error } = await supabase
+      const { data, error } = await getBrowserSupabase()
         .from("projects")
         .insert(insertPayload)
         .select("id, project_number")

@@ -476,7 +476,7 @@ Week 1 of the 12-week plan. Customers sign in at `/signin`; the header shows
 | `app/account/page.tsx` | Signed-in landing page (server-checked with `getUser()`). |
 | `proxy.ts` | Next 16 Proxy: refreshes the session cookie; sends signed-out visitors from `/account` to `/signin`. |
 | `lib/supabase/browser.ts`, `lib/supabase/server.ts` | `@supabase/ssr` clients (cookie-based sessions). |
-| `supabase/migrations/20260928000000_create_profiles.sql` | `profiles` table: name + role (`customer` / `staff` / `factory`), auto-created on first sign-in; users can't change their own role. |
+| `supabase/migrations/20260928120000_accounts_and_roles.sql` | `profiles` + `factories` tables and roles (`customer` / `dcl_staff` / `dcl_admin` / `factory`), auto-created on first sign-in; users can't change their own role. (Replaced the earlier, never-applied `create_profiles.sql` draft, now deleted.) |
 
 **Supabase dashboard setup (required):**
 1. Run the profiles migration in the SQL editor.

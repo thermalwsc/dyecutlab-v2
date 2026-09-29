@@ -1,19 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getRouteSupabase, unauthorized } from "../../../../../lib/supabase/route";
 
-function getSupabase() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error(
-      "Supabase environment variables are missing."
-    );
-  }
-
-  return createClient(supabaseUrl, supabaseKey);
-}
 
 /*
 |--------------------------------------------------------------------------
@@ -34,7 +21,8 @@ export async function GET(
 ) {
   try {
     const { projectId } = await context.params;
-    const supabase = getSupabase();
+    const { supabase, user } = await getRouteSupabase();
+    if (!user) return unauthorized();
 
     /*
     |--------------------------------------------------------------------------

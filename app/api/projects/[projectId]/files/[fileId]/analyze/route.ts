@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getRouteSupabase, unauthorized } from "../../../../../../../lib/supabase/route";
 import OpenAI from "openai";
 
 /*
@@ -8,24 +8,6 @@ import OpenAI from "openai";
 |--------------------------------------------------------------------------
 */
 
-function getSupabase() {
-  const supabaseUrl =
-    process.env.NEXT_PUBLIC_SUPABASE_URL;
-
-  const supabaseKey =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error(
-      "Supabase environment variables are missing."
-    );
-  }
-
-  return createClient(
-    supabaseUrl,
-    supabaseKey
-  );
-}
 
 function getOpenAI() {
   const apiKey =
@@ -286,8 +268,8 @@ export async function POST(
     }>;
   }
 ) {
-  const supabase =
-    getSupabase();
+  const { supabase, user } = await getRouteSupabase();
+    if (!user) return unauthorized();
 
   let analysisId:
     | string

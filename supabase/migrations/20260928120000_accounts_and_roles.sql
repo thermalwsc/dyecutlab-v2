@@ -22,9 +22,9 @@
 --      (lib/supabase/admin.ts, used by app/admin/accounts).
 --
 -- ORDER / RE-RUN SAFETY
---   Written to run AFTER 20260928000000_create_profiles.sql, but also works
---   on a database where that file never ran: the table is created when it is
---   missing and upgraded in place when it already exists (text `role` →
+--   Self-contained. (It replaced an earlier draft, create_profiles.sql,
+--   which was never applied and has been deleted.) The table is created when
+--   it is missing and upgraded in place when it already exists (text `role` →
 --   enum, `avatar_url`/`updated_at` and the old self-update policy dropped).
 --   Re-running this file is a no-op.
 

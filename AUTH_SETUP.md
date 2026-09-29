@@ -58,9 +58,8 @@ and backfills a `profiles` row for every existing `auth.users` row.
 
 The file is idempotent — running it twice is a no-op.
 
-You can skip `20260928000000_create_profiles.sql`: it is the first draft of the
-same table and this migration supersedes it. (As of this writing it was never
-applied to the live project — `profiles` did not exist.)
+An earlier draft of the same table (`20260928000000_create_profiles.sql`) was
+never applied and has been deleted; this migration is the only one needed.
 
 ## 3. Promote the first DCL admin
 
@@ -271,3 +270,23 @@ phone for the last column.
 * Deleting an account (as opposed to switching it off) is not in the UI — use
   Supabase → Authentication → Users if it is ever needed.
 
+
+## 10. Project data locked to accounts (2026-09-29)
+
+Migration `supabase/migrations/20260929000000_lock_project_tables.sql` closes the
+§7 leak. Apply it in the SQL editor **after a backup**, and run the preview query
+at the top of the file first to see which old policies it replaces.
+
+* `clients.owner_id` / `projects.owner_id` (default `auth.uid()`) and
+  `projects.factory_id`. Existing rows are linked when a client's email matches an
+  account's email; unmatched rows stay owner-less = DCL team only.
+* RLS on all six legacy tables + the `project-files` bucket: customer → own rows,
+  `dcl_staff`/`dcl_admin` → everything, `factory` → projects assigned to its
+  factory, `anon` → nothing. `owner_id`, `factory_id` and `project_number` are not
+  writable from the browser (column grants); assign factories via the service role.
+* App side (already deployed with this commit): every `/api/projects/**` route and
+  `/api/baba` use the caller's session (`lib/supabase/route.ts`) and return 401
+  when signed out; `/app` and `/project/*` require sign-in (proxy + layout guard).
+
+Verify after applying (read-only, publishable key): every one of the six tables
+should answer 401 instead of returning rows.

@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
+import { getRouteSupabase, unauthorized } from "../../../lib/supabase/route";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -236,6 +237,9 @@ not unnecessarily block creation of the project.
 `;
 
 export async function POST(request: Request) {
+  const { user } = await getRouteSupabase();
+  if (!user) return unauthorized();
+
   try {
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
