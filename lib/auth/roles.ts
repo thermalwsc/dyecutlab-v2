@@ -58,7 +58,14 @@ export function homePathForRole(role: AppRole): string {
 /* True for the role's own area and anything under it ("/admin", "/admin/accounts").
    /admin/accounts is still dcl_admin-only: the page guard decides that, this
    only keeps the sign-in redirect from fighting it. */
+/* Pages every signed-in role may return to after sign-in: the DICI chat and
+   project pages. Which projects they can actually open is decided by RLS. */
+const SHARED_SIGNED_IN_AREAS = ["/app", "/project"];
+
 export function isPathAllowedForRole(role: AppRole, path: string): boolean {
+  for (const area of SHARED_SIGNED_IN_AREAS) {
+    if (path === area || path.startsWith(`${area}/`) || path.startsWith(`${area}?`)) return true;
+  }
   const home = homePathForRole(role);
   if (path === home) return true;
   return path.startsWith(`${home}/`) || path.startsWith(`${home}?`);

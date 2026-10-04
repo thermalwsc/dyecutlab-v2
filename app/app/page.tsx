@@ -606,20 +606,46 @@ function ClientCapture({
     setError(null);
 
     try {
-      const { data, error: saveError } = await getBrowserSupabase()
-        .from("clients")
-        .upsert(
-          {
-            phone: cleanPhone,
-            email: cleanEmail || null,
-            marketing_sms_opt_in: marketingSms,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "phone" }
-        )
-        .select("id, phone, email, marketing_sms_opt_in")
-        .single();
+      /* One customer record per signed-in account (clients.owner_id). Update
+         it when it exists, create it otherwise — never upsert by phone, which
+         would collide with a number another account already saved. */
+      const supabase = getBrowserSupabase();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Please sign in again to continue.");
 
+      const fields = {
+        phone: cleanPhone,
+        email: cleanEmail || null,
+        marketing_sms_opt_in: marketingSms,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data: existing } = await supabase
+        .from("clients")
+        .select("id")
+        .eq("owner_id", user.id)
+        .order("id")
+        .limit(1)
+        .maybeSingle();
+
+      const { data, error: saveError } = existing
+        ? await supabase
+            .from("clients")
+            .update(fields)
+            .eq("id", existing.id)
+            .select("id, phone, email, marketing_sms_opt_in")
+            .single()
+        : await supabase
+            .from("clients")
+            .insert({ ...fields, owner_id: user.id })
+            .select("id, phone, email, marketing_sms_opt_in")
+            .single();
+
+      if (saveError?.code === "23505") {
+        throw new Error("That mobile number is already linked to another account.");
+      }
       if (saveError) throw saveError;
 
       const savedClient: ClientData = {
@@ -643,7 +669,11 @@ function ClientCapture({
       onContinue(savedClient);
     } catch (saveError) {
       console.error("CLIENT SAVE ERROR:", saveError);
-      setError("I couldn't save your contact details yet. Please try again.");
+      const friendly =
+        saveError instanceof Error && /already linked|sign in again/i.test(saveError.message)
+          ? saveError.message
+          : null;
+      setError(friendly ?? "I couldn't save your contact details yet. Please try again.");
     } finally {
       setSaving(false);
     }

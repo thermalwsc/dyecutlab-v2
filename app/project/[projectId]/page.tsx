@@ -6,7 +6,31 @@ import {
   useRef,
   useState,
 } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
+import { brandFont } from "../../fonts";
+import { Footer, Header } from "../../updates/SiteChrome";
+import { projectStatusLabel } from "../../admin/statuses";
+import { getBrowserSupabase } from "../../../lib/supabase/browser";
+
+/* Project stages shown in the tracker, built from the real projects.status
+   values (blueprint state machine). */
+const STAGES: { label: string; statuses: string[] }[] = [
+  { label: "Brief", statuses: ["lead", "development"] },
+  { label: "Quote", statuses: ["quote_ready", "factory_review", "approved"] },
+  { label: "Proof", statuses: ["payment", "proof"] },
+  { label: "Production", statuses: ["production", "qc"] },
+  { label: "Delivery", statuses: ["shipping", "delivered"] },
+];
+
+function stageIndex(status: string | null) {
+  const value = (status || "development").toLowerCase();
+  const i = STAGES.findIndex((stage) => stage.statuses.includes(value));
+  return i === -1 ? 0 : i;
+}
+
+/* Extra details only the DYE CUT LAB team sees. */
+type TeamInfo = { owner: string; factory: string };
 
 type Project = {
   id: string;
@@ -164,6 +188,9 @@ export default function ProjectPage() {
     useState<Project | null>(null);
 
   const [loading, setLoading] = useState(true);
+
+  const [teamInfo, setTeamInfo] =
+    useState<TeamInfo | null>(null);
 
   const [messagesLoading, setMessagesLoading] =
     useState(true);
@@ -700,6 +727,54 @@ export default function ProjectPage() {
     }
   }
 
+  /* Team-only extras: who owns the project and which factory has it. The
+     reads go through the signed-in user's client, so RLS only answers for
+     the DCL team; everyone else simply gets nothing. */
+  useEffect(() => {
+    if (!project?.id) return;
+    let cancelled = false;
+
+    (async () => {
+      const supabase = getBrowserSupabase();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: me } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (!me || !["dcl_staff", "dcl_admin"].includes(me.role)) return;
+
+      const { data: row } = await supabase
+        .from("projects")
+        .select("owner_id, factory_id")
+        .eq("id", project.id)
+        .maybeSingle();
+
+      const [owner, factory] = await Promise.all([
+        row?.owner_id
+          ? supabase.from("profiles").select("full_name, email").eq("id", row.owner_id).maybeSingle()
+          : Promise.resolve({ data: null }),
+        row?.factory_id
+          ? supabase.from("factories").select("name").eq("id", row.factory_id).maybeSingle()
+          : Promise.resolve({ data: null }),
+      ]);
+
+      if (cancelled) return;
+      setTeamInfo({
+        owner: owner.data ? owner.data.full_name || owner.data.email || "Customer" : "Not linked",
+        factory: factory.data?.name ?? "No factory",
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [project?.id]);
+
   function handleKeyDown(
     event: React.KeyboardEvent<HTMLInputElement>
   ) {
@@ -720,9 +795,9 @@ export default function ProjectPage() {
 
   if (loading) {
     return (
-      <main className="loading-screen">
+      <main className={`loading-screen ${brandFont.className}`}>
         <span className="status-dot" />
-        LOADING PROJECT
+        Loading project…
         <style jsx>{styles}</style>
       </main>
     );
@@ -730,8 +805,8 @@ export default function ProjectPage() {
 
   if (!project) {
     return (
-      <main className="loading-screen">
-        PROJECT NOT FOUND
+      <main className={`loading-screen ${brandFont.className}`}>
+        Project not found, or you don’t have access to it.
         <style jsx>{styles}</style>
       </main>
     );
@@ -743,9 +818,11 @@ export default function ProjectPage() {
   |--------------------------------------------------------------------------
   */
 
-  const status =
-    project.status?.toUpperCase() ||
-    "DEVELOPMENT";
+  const status = projectStatusLabel(
+    project.status || "development"
+  );
+
+  const currentStage = stageIndex(project.status);
 
   const quantity =
     project.quantity != null
@@ -789,8 +866,10 @@ export default function ProjectPage() {
 
   return (
     <>
-      <main className="page">
-        {/* HEADER */}
+      <main className={`page ${brandFont.className}`}>
+        <Header />
+
+        {/* PROJECT BAR */}
 
         <header className="topbar">
           <button
@@ -814,12 +893,16 @@ export default function ProjectPage() {
             </div>
           </div>
 
-          <button
-            className="icon-button menu-button"
-            aria-label="Project menu"
-          >
-            ···
-          </button>
+          {teamInfo ? (
+            <Link
+              href={`/admin/projects/${project.id}`}
+              className="team-link"
+            >
+              Edit in team workspace
+            </Link>
+          ) : (
+            <span className="topbar-spacer" />
+          )}
         </header>
 
         <div className="content">
@@ -827,66 +910,77 @@ export default function ProjectPage() {
 
           <section className="hero">
             <div className="eyebrow">
-              PROJECT WORKSPACE
+              Project workspace
             </div>
 
             <h1>
               {project.title ||
-                "UNTITLED PROJECT"}
+                "Untitled project"}
             </h1>
 
-            <div className="hero-meta">
-              {project.units ?? "—"} UNITS
-              <span>·</span>
-              {project.flavor_count ?? "—"}{" "}
-              FLAVORS
-            </div>
+            <ul className="hero-specs">
+              <li>
+                <span>Units</span>
+                {project.units ?? "—"}
+              </li>
+              <li>
+                <span>Flavors</span>
+                {project.flavor_count ?? "—"}
+              </li>
+              <li>
+                <span>Size</span>
+                {project.pouch_size || project.box_dimensions || project.size || "—"}
+              </li>
+              <li>
+                <span>Material</span>
+                {project.material || "—"}
+              </li>
+              <li>
+                <span>Finish</span>
+                {project.finish || "—"}
+              </li>
+            </ul>
+
+            {teamInfo && (
+              <p className="team-meta">
+                <strong>Customer:</strong> {teamInfo.owner}
+                <span>·</span>
+                <strong>Factory:</strong> {teamInfo.factory}
+              </p>
+            )}
           </section>
 
           {/* PROJECT STATUS */}
 
           <section className="section status-section">
             <div className="eyebrow">
-              PROJECT STATUS
+              Project status
             </div>
 
-            <div className="timeline">
-              <TimelineStep
-                label="BRIEF"
-                active={true}
-              />
-
-              <TimelineLine />
-
-              <TimelineStep
-                label="DESIGN"
-                active={false}
-              />
-
-              <TimelineLine />
-
-              <TimelineStep
-                label="SAMPLE"
-                active={false}
-              />
-
-              <TimelineLine />
-
-              <TimelineStep
-                label="PRODUCTION"
-                active={false}
-              />
-            </div>
+            <ol className="timeline">
+              {STAGES.map((stage, index) => (
+                <li key={stage.label} className="timeline-item">
+                  {index > 0 && <TimelineLine done={index <= currentStage} />}
+                  <TimelineStep
+                    label={stage.label}
+                    active={index === currentStage}
+                    done={index < currentStage}
+                  />
+                </li>
+              ))}
+            </ol>
 
             <div className="current-card">
               <div className="small-label">
-                CURRENTLY
+                Currently
               </div>
 
               <strong>
-                {briefComplete
-                  ? "BRIEF COMPLETE"
-                  : "BRIEF DEVELOPMENT"}
+                {status}
+                {currentStage === 0 &&
+                  (briefComplete
+                    ? " · brief complete"
+                    : " · brief in progress")}
               </strong>
             </div>
           </section>
@@ -1216,6 +1310,10 @@ export default function ProjectPage() {
           </section>
 
           <div className="input-spacer" />
+        </div>
+
+        <div className="site-footer">
+          <Footer />
         </div>
       </main>
 
@@ -1795,16 +1893,20 @@ function BriefItem({
 function TimelineStep({
   label,
   active,
+  done = false,
 }: {
   label: string;
   active: boolean;
+  done?: boolean;
 }) {
   return (
-    <div className="timeline-step">
+    <div className="timeline-step" aria-current={active ? "step" : undefined}>
       <span
         className={
           active
             ? "timeline-dot active"
+            : done
+            ? "timeline-dot done"
             : "timeline-dot"
         }
       />
@@ -1822,9 +1924,9 @@ function TimelineStep({
   );
 }
 
-function TimelineLine() {
+function TimelineLine({ done = false }: { done?: boolean }) {
   return (
-    <div className="timeline-line" />
+    <div className={done ? "timeline-line done" : "timeline-line"} />
   );
 }
 
@@ -1878,10 +1980,65 @@ const styles = `
     width: 100%;
     min-height: 100vh;
     background: #ffffff;
+    color: #0a0a0a;
+    padding-bottom: 130px;
+  }
+
+  .site-footer {
+    margin-top: 64px;
+  }
+
+  .team-link {
+    border-radius: 999px;
+    background: #0a0a0a;
+    color: #ffffff;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 800;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .topbar-spacer {
+    width: 48px;
+  }
+
+  .hero-specs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 28px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .hero-specs span {
+    display: block;
+    color: #52525b;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .team-meta {
+    margin: 20px 0 0;
+    padding: 12px 16px;
+    border-radius: 14px;
+    background: #f4f4f5;
+    font-size: 14px;
+  }
+
+  .team-meta span {
+    margin: 0 8px;
   }
 
   .loading-screen {
     min-height: 100vh;
+    color: #0a0a0a;
+    background: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1892,7 +2049,8 @@ const styles = `
 
   .topbar {
     position: relative;
-    height: 155px;
+    height: 96px;
+    margin-top: 16px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1911,18 +2069,19 @@ const styles = `
   }
 
   .project-number {
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: 0.02em;
   }
 
   .project-status {
-    margin-top: 18px;
+    margin-top: 8px;
+    font-weight: 700;
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 9px;
-    color: #85858f;
+    color: #3f3f46;
     font-size: 15px;
     letter-spacing: 0.08em;
   }
@@ -1932,7 +2091,7 @@ const styles = `
     height: 12px;
     display: inline-block;
     border-radius: 50%;
-    background: #72e600;
+    background: #c2f23a;
     flex: 0 0 auto;
   }
 
@@ -1965,12 +2124,14 @@ const styles = `
 
   .eyebrow,
   .small-label {
-    color: #aaaab5;
+    color: #3f3f46;
     letter-spacing: 0.16em;
   }
 
   .eyebrow {
-    font-size: 16px;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
   }
 
   .hero h1 {
@@ -1980,13 +2141,13 @@ const styles = `
       7vw,
       82px
     );
-    line-height: 0.98;
-    font-weight: 400;
-    letter-spacing: -0.055em;
+    line-height: 1;
+    font-weight: 900;
+    letter-spacing: -0.045em;
   }
 
   .hero-meta {
-    color: #7f7f89;
+    color: #3f3f46;
     font-size: 19px;
     letter-spacing: 0.04em;
   }
@@ -2009,7 +2170,20 @@ const styles = `
   .timeline {
     display: flex;
     align-items: flex-start;
-    margin-top: 44px;
+    margin: 36px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .timeline-item {
+    display: flex;
+    align-items: flex-start;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .timeline-item:first-child {
+    flex: 0 0 auto;
   }
 
   .timeline-step {
@@ -2028,13 +2202,19 @@ const styles = `
     background: #ffffff;
   }
 
+  .timeline-dot.done {
+    border-color: #0a0a0a;
+    background: #0a0a0a;
+  }
+
   .timeline-dot.active {
-    border-color: #72e600;
-    background: #72e600;
+    box-shadow: 0 0 0 4px rgba(194, 242, 58, 0.35);
+    border-color: #c2f23a;
+    background: #c2f23a;
   }
 
   .timeline-label {
-    color: #b1b1b9;
+    color: #3f3f46;
     font-size: 11px;
     letter-spacing: 0.05em;
   }
@@ -2043,8 +2223,12 @@ const styles = `
     color: #111111;
   }
 
+  .timeline-line.done {
+    background: #0a0a0a;
+  }
+
   .timeline-line {
-    height: 1px;
+    height: 2px;
     background: #dedee2;
     flex: 1;
     margin-top: 8px;
@@ -2064,9 +2248,10 @@ const styles = `
 
   .current-card strong {
     display: block;
-    margin-top: 17px;
-    font-size: 18px;
-    letter-spacing: 0.05em;
+    margin-top: 10px;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
   }
 
   /*
@@ -2082,7 +2267,7 @@ const styles = `
   }
 
   .completion {
-    color: #9696a0;
+    color: #3f3f46;
     font-size: 11px;
     letter-spacing: 0.08em;
   }
@@ -2126,7 +2311,7 @@ const styles = `
 
   .files-count {
     margin-top: 12px;
-    color: #8f8f99;
+    color: #3f3f46;
     font-size: 11px;
     letter-spacing: 0.1em;
   }
@@ -2166,7 +2351,7 @@ const styles = `
     border: 1px solid #dedee2;
     border-radius: 18px;
     background: #ffffff;
-    color: #8d8d96;
+    color: #3f3f46;
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 0.08em;
@@ -2176,7 +2361,7 @@ const styles = `
   .category-button-active {
     border-color: #000000;
     background: #000000;
-    color: #72e600;
+    color: #3f6f00;
   }
 
   .category-button:disabled {
@@ -2185,13 +2370,13 @@ const styles = `
 
   .category-help {
     margin-top: 13px;
-    color: #aaaab2;
+    color: #3f3f46;
     font-size: 11px;
     line-height: 1.5;
   }
 
   .category-help strong {
-    color: #777780;
+    color: #3f3f46;
   }
 
   .upload-error {
@@ -2206,7 +2391,7 @@ const styles = `
 
   .files-loading {
     margin-top: 36px;
-    color: #a0a0a8;
+    color: #3f3f46;
     font-size: 11px;
     letter-spacing: 0.12em;
   }
@@ -2232,7 +2417,7 @@ const styles = `
     justify-content: center;
     border-radius: 14px;
     background: #000000;
-    color: #72e600;
+    color: #3f6f00;
     font-size: 28px;
     font-weight: 300;
   }
@@ -2245,7 +2430,7 @@ const styles = `
   .empty-files p {
     max-width: 440px;
     margin: 9px 0 0;
-    color: #96969f;
+    color: #3f3f46;
     font-size: 13px;
     line-height: 1.5;
   }
@@ -2323,7 +2508,7 @@ const styles = `
     display: flex;
     align-items: center;
     gap: 7px;
-    color: #9999a2;
+    color: #3f3f46;
     font-size: 9px;
     letter-spacing: 0.08em;
   }
@@ -2335,7 +2520,7 @@ const styles = `
   .file-open {
     width: 32px;
     flex: 0 0 32px;
-    color: #888891;
+    color: #3f3f46;
     font-size: 18px;
     text-align: center;
   }
@@ -2376,7 +2561,7 @@ const styles = `
     display: flex;
     align-items: center;
     gap: 7px;
-    color: #96969f;
+    color: #3f3f46;
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 0.09em;
@@ -2391,7 +2576,7 @@ const styles = `
   }
 
   .intelligence-status-processing {
-    color: #777780;
+    color: #3f3f46;
   }
 
   .intelligence-status-processing .intelligence-dot {
@@ -2400,11 +2585,11 @@ const styles = `
   }
 
   .intelligence-status-complete {
-    color: #60c900;
+    color: #3f6f00;
   }
 
   .intelligence-status-complete .intelligence-dot {
-    background: #72e600;
+    background: #c2f23a;
   }
 
   .analyze-button {
@@ -2422,7 +2607,7 @@ const styles = `
 
   .analyze-button:hover:not(:disabled) {
     background: #000000;
-    color: #72e600;
+    color: #3f6f00;
   }
 
   .analyze-button:disabled {
@@ -2436,7 +2621,7 @@ const styles = `
     border: 1px solid #dedee2;
     border-radius: 11px;
     background: #ffffff;
-    color: #55555d;
+    color: #3f3f46;
     font-size: 11px;
     line-height: 1.45;
   }
@@ -2457,7 +2642,7 @@ const styles = `
     padding: 7px 9px;
     border-radius: 8px;
     background: #eeeeef;
-    color: #6f6f77;
+    color: #3f3f46;
     font-size: 8px;
     font-weight: 700;
     letter-spacing: 0.07em;
@@ -2476,7 +2661,7 @@ const styles = `
 
   .analysis-disclaimer {
     margin-top: 20px;
-    color: #aaaab2;
+    color: #3f3f46;
     font-size: 8px;
     line-height: 1.5;
     letter-spacing: 0.09em;
@@ -2487,7 +2672,7 @@ const styles = `
   }
 
   .preflight-status-unverified {
-    color: #777780;
+    color: #3f3f46;
   }
 
   .preflight-status-unverified .intelligence-dot {
@@ -2520,7 +2705,7 @@ const styles = `
   }
 
   .production-check-name {
-    color: #777780;
+    color: #3f3f46;
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.08em;
@@ -2530,7 +2715,7 @@ const styles = `
     display: flex;
     align-items: center;
     gap: 7px;
-    color: #777780;
+    color: #3f3f46;
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.06em;
@@ -2541,7 +2726,7 @@ const styles = `
     width: 14px;
     display: inline-flex;
     justify-content: center;
-    color: #777780;
+    color: #3f3f46;
     font-size: 12px;
   }
 
@@ -2559,7 +2744,7 @@ const styles = `
     padding: 13px 16px;
     border-top: 1px solid #ededf0;
     background: #fafafa;
-    color: #aaaab2;
+    color: #3f3f46;
     font-size: 8px;
     letter-spacing: 0.08em;
   }
@@ -2577,7 +2762,7 @@ const styles = `
   }
 
   .baba-section-complete {
-    border-top: 2px solid #72e600;
+    border-top: 2px solid #c2f23a;
   }
 
   .baba-heading {
@@ -2591,7 +2776,7 @@ const styles = `
     align-items: center;
     gap: 9px;
     margin-top: 16px;
-    color: #60c900;
+    color: #3f6f00;
     font-size: 13px;
     letter-spacing: 0.12em;
   }
@@ -2609,13 +2794,13 @@ const styles = `
     justify-content: space-between;
     border: 1px solid #e5e5e5;
     border-radius: 14px;
-    color: #92929b;
+    color: #3f3f46;
     font-size: 10px;
     letter-spacing: 0.12em;
   }
 
   .baba-mode span {
-    color: #60c900;
+    color: #3f6f00;
   }
 
   .baba-avatar {
@@ -2642,7 +2827,7 @@ const styles = `
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: #72e600;
+    background: #c2f23a;
   }
 
   .baba-avatar.large span {
@@ -2659,7 +2844,7 @@ const styles = `
 
   .history-loading {
     padding: 20px 0;
-    color: #a0a0a8;
+    color: #3f3f46;
     font-size: 11px;
     letter-spacing: 0.12em;
   }
@@ -2727,7 +2912,7 @@ const styles = `
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #72e600;
+    background: #c2f23a;
     animation:
       pulse 1s infinite ease-in-out;
   }
@@ -2822,7 +3007,7 @@ const styles = `
   }
 
   .composer input::placeholder {
-    color: #aaaab0;
+    color: #3f3f46;
   }
 
   .send-button {
@@ -2832,7 +3017,7 @@ const styles = `
     border: 0;
     border-radius: 50%;
     background: #000000;
-    color: #72e600;
+    color: #3f6f00;
     font-size: 27px;
     line-height: 1;
     cursor: pointer;
@@ -2851,6 +3036,25 @@ const styles = `
   */
 
   @media (max-width: 700px) {
+    .timeline-step {
+      width: 54px;
+      flex: 0 0 54px;
+    }
+
+    .timeline-label {
+      font-size: 10px;
+    }
+
+    .hero-specs {
+      gap: 10px 20px;
+      font-size: 15px;
+    }
+
+    .team-link {
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+
     .topbar {
       height: 105px;
       padding: 0 16px;
@@ -3071,7 +3275,7 @@ const styles = `
 
     .baba-section-complete {
       border-top:
-        2px solid #72e600;
+        2px solid #c2f23a;
     }
 
     .baba-heading {
