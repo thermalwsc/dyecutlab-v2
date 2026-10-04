@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="September 26, 2026">
+    <LegalPage title="Privacy Policy" updated="October 4, 2026">
       <p>
         This Privacy Policy explains how Dye Cut Lab LLC (&ldquo;DYE CUT LAB&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;) collects,
         uses and protects information when you visit dyecutlab.com, sign up for updates, request a
@@ -24,6 +24,7 @@ export default function PrivacyPage() {
 
       <h2>Information we collect</h2>
       <ul>
+        <li><strong>Account details:</strong> your email address and a securely stored password, or, if you sign in with Google or Apple, the name, email address and profile picture that service shares with us.</li>
         <li><strong>Contact details you give us:</strong> your name, email address and mobile phone number.</li>
         <li><strong>Project details:</strong> what you tell us you want made, such as product type, quantity and size.</li>
         <li><strong>Messages:</strong> texts and emails you send us, and our replies.</li>
@@ -33,11 +34,31 @@ export default function PrivacyPage() {
 
       <h2>How we use your information</h2>
       <ul>
+        <li>To create and secure your account and sign you in.</li>
         <li>To reply to your project request and send you quotes.</li>
         <li>To send the product and beta updates you signed up for, by email or text.</li>
         <li>To answer your questions and provide customer support.</li>
         <li>To keep our website secure and prevent abuse.</li>
       </ul>
+
+      <h2>Accounts and signing in with Google or Apple</h2>
+      <p>
+        You can create a DYE CUT LAB account with your email and a password, or sign in with Google
+        or Apple. If you choose Google or Apple, we receive only your name, email address and profile
+        picture from that service. We use them solely to create your account, sign you in and show
+        your name in your account. We do not receive your Google or Apple password, and we do not
+        access your contacts, files, calendar or any other data in those accounts.
+      </p>
+      <p>
+        Our use of information received from Google APIs adheres to the{" "}
+        <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer">
+          Google API Services User Data Policy
+        </a>
+        , including the Limited Use requirements. We never sell this information, use it for
+        advertising, or share it with anyone except the service providers listed below that help run
+        your account. You can disconnect DYE CUT LAB at any time from your Google Account settings,
+        and you can ask us to delete your account and its data by emailing us.
+      </p>
 
       <h2>Text messaging (SMS)</h2>
       <p>

@@ -13,8 +13,8 @@ export const CONTACT = {
   /* First name used in internal staff alerts only — never shown as
      the sender on the public /start flow (that uses "our team"). */
   personName: "Gilbert",
-  phoneE164: "+14055635396",
-  phoneDisplay: "(405) 563-5396",
+  phoneE164: "+16464450026",
+  phoneDisplay: "(646) 445-0026",
   email: "dyecutlab@gmail.com",
 };
 

@@ -52,7 +52,7 @@ Environment Variables). None of the Brevo or Sendblue values may carry a
 | `BREVO_LIST_ID` | No | Numeric Brevo list id for new sign-ups. Optional: contacts still sync without it. |
 | `SENDBLUE_API_KEY_ID` | **Yes for SMS** | Sendblue dashboard → Developer → API keys (or `sendblue show-keys`). Sent as the `sb-api-key-id` header. Without it, texts are skipped (nothing else breaks). |
 | `SENDBLUE_API_KEY_SECRET` | **Yes for SMS** | Same place; sent as `sb-api-secret-key`. |
-| `SENDBLUE_FROM_NUMBER` | **Yes for SMS** | A phone line **on the Sendblue account**, E.164 (`sendblue lines` / `GET /api/lines`). The API requires `from_number` on every send. Set to the Sendblue business line `+14055635396` — the same number stored publicly in `lib/contact.ts`. |
+| `SENDBLUE_FROM_NUMBER` | **Yes for SMS** | A phone line **on the Sendblue account**, E.164 (`sendblue lines` / `GET /api/lines`). The API requires `from_number` on every send. Set to the Sendblue business line `+16464450026` — the same number stored publicly in `lib/contact.ts`. |
 | `NEXT_PUBLIC_SUPABASE_URL` | Already set | Unchanged. |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Already set | Unchanged. |
 | `OPENAI_API_KEY` | Already set | Unchanged — but see §6 (build fails without it). |
@@ -246,7 +246,7 @@ before launch:
 1. **A provisioned number that receives inbound texts.** Sendblue (the SMS
    provider since §12) assigns its own line that can both send and receive, and
    its inbound `receive` webhook would carry `JOIN` / `ORDER`. Two caveats:
-   `from_number` must be a Sendblue number (the public (405) 563-5396 line is a
+   `from_number` must be a Sendblue number (the public (646) 445-0026 line is a
    Sendblue line, so the pills address it directly), and on the free shared-line plan a
    recipient has to text that line once before it can be messaged at all.
 2. **Keyword automation:** `JOIN` → create/opt-in a subscriber (write to
@@ -260,7 +260,7 @@ before launch:
    message frequency, "Msg & data rates may apply", STOP/HELP, and links to
    Terms + Privacy near the CTA. Current copy is in `lib/smsKeywords.ts`.
 
-**Current state:** the pills show the Sendblue business line, (405) 563-5396
+**Current state:** the pills show the Sendblue business line, (646) 445-0026
 (`lib/contact.ts`), and are tappable `sms:` links (`SMS_NUMBER_ACCEPTS_TEXTS`).
 Texts land on that phone and are handled **manually** — ORDER by replying,
 JOIN by adding the contact to Brevo by hand. `SMS_KEYWORDS_LIVE = false`
@@ -398,7 +398,7 @@ not fall back, and neither is used here.
   Brevo. The column exists and remains `NULL` until then.
 - The only text our own code sends is the **internal staff alert**, so no
   customer-facing STOP flow is exercised by this swap yet. Customer texts to
-  the (405) 563-5396 number land in Sendblue and are replied to from there.
+  the (646) 445-0026 number land in Sendblue and are replied to from there.
 
 ### 12.6 Environment variables
 
@@ -406,7 +406,7 @@ not fall back, and neither is used here.
 |---|---|---|---|
 | `SENDBLUE_API_KEY_ID` | Yes for SMS | `.env.local` + Vercel (Preview **and** Production) | Sendblue dashboard → Developer → API keys, or `sendblue show-keys`. Server-only. |
 | `SENDBLUE_API_KEY_SECRET` | Yes for SMS | same | Sent as the `sb-api-secret-key` header. |
-| `SENDBLUE_FROM_NUMBER` | Yes for SMS | same | A Sendblue-owned line in E.164 (`sendblue lines` / `GET /api/lines`). Set to `+14055635396` — the public business line in `lib/contact.ts`. |
+| `SENDBLUE_FROM_NUMBER` | Yes for SMS | same | A Sendblue-owned line in E.164 (`sendblue lines` / `GET /api/lines`). Set to `+16464450026` — the public business line in `lib/contact.ts`. |
 | `STAFF_NOTIFY_PHONE` | No | same | Explicit env var only — no default (when unset the staff SMS returns `skipped` and only email goes out). Must not be the Sendblue line itself; must be a number that has texted the Sendblue line. |
 | `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`, `BREVO_SENDER_NAME`, `BREVO_LIST_ID` | **Keep** | unchanged | Email + contact mirror. Do not delete. |
 | `BREVO_SMS_SENDER`, `BREVO_SMS_TYPE` | **Removed / unused** | — | Safe to delete from `.env.local` and Vercel: no code reads them any more (they were never read for `type` — it was hardcoded `transactional`). |
