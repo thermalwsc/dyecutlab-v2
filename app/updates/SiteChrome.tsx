@@ -18,6 +18,7 @@ import {
 import { START_PROJECT_HREF } from "../../lib/contact";
 import { ROLE_HOME } from "../../lib/auth/roles";
 import { getBrowserSupabase } from "../../lib/supabase/browser";
+import { SHOW_BETA_SIGNUP } from "../../lib/siteFlags";
 
 /* Social profiles. A null href renders the icon dimmed with a "Soon"
    badge until the profile exists. */
@@ -28,7 +29,7 @@ const SOCIAL_LINKS: { label: string; href: string | null; Icon: typeof Instagram
 
 /* Absolute ("/#…") so the same menu works from /start as well as /. */
 const NAV_LINKS = [
-  { label: "Join the beta", href: "/#beta" },
+  ...(SHOW_BETA_SIGNUP ? [{ label: "Join the beta", href: "/#beta" }] : []),
   { label: "Order packaging", href: "/#order" },
   { label: "About", href: "/#about" },
   { label: "Contact", href: "/#order" },

@@ -192,6 +192,60 @@ export function TikTokIcon({ className }: IconProps) {
   );
 }
 
+/* ---------- "How it works" steps (outline only, drawn on black) ---------- */
+
+export function StepPhoneIcon({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <rect x="10" y="4" width="22" height="40" rx="5" />
+      <path d="M18 38h6" />
+      <path d="M26 14h14a4 4 0 0 1 4 4v6a4 4 0 0 1-4 4h-6l-5 4 1-4h-4a4 4 0 0 1-4-4v-6a4 4 0 0 1 4-4Z" fill={LIME} stroke={LIME} />
+      <circle cx="29" cy="21" r="1.4" fill="#0a0a0a" stroke="none" />
+      <circle cx="34" cy="21" r="1.4" fill="#0a0a0a" stroke="none" />
+      <circle cx="39" cy="21" r="1.4" fill="#0a0a0a" stroke="none" />
+    </Svg>
+  );
+}
+
+export function StepChatIcon({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path d="M8 8h32a4 4 0 0 1 4 4v18a4 4 0 0 1-4 4H22l-9 8 1-8H8a4 4 0 0 1-4-4V12a4 4 0 0 1 4-4Z" />
+      <circle cx="16" cy="21" r="2" fill={LIME} stroke="none" />
+      <circle cx="24" cy="21" r="2" fill={LIME} stroke="none" />
+      <circle cx="32" cy="21" r="2" fill={LIME} stroke="none" />
+    </Svg>
+  );
+}
+
+export function StepProofIcon({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path d="M10 4h20l8 8v32H10Z" />
+      <path d="M30 4v8h8" />
+      <path d="M24 17l8 4.5v9L24 35l-8-4.5v-9Z" />
+      <path d="M16 21.5l8 4.5 8-4.5M24 26v9" />
+    </Svg>
+  );
+}
+
+export function LaptopIcon({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <rect x="8" y="9" width="32" height="22" rx="3" />
+      <path d="M3 37h42l-3 4H6Z" />
+    </Svg>
+  );
+}
+
+export function PlusIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" aria-hidden="true" className={className}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
 /* ---------- Doodle accents ---------- */
 
 /* Three short motion lines fanning out — place next to key words. */

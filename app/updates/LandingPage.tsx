@@ -3,16 +3,28 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import Parallax from "./Parallax";
 import SignupForm from "./SignupForm";
-import { Footer, Header, SmsLegalLinks, TrustRow } from "./SiteChrome";
+import { Header, SmsLegalLinks, Wordmark } from "./SiteChrome";
 import {
   ArrowIcon,
   BagLockIcon,
-  Burst,
+  BoltIcon,
   ChatDotsIcon,
+  CubeLogo,
+  DiamondIcon,
+  FactoryIcon,
+  GlobeIcon,
+  InstagramIcon,
+  LaptopIcon,
   PhoneChatIllustration,
   PhoneSmsIllustration,
+  PlusIcon,
   Sparkle,
+  StepChatIcon,
+  StepPhoneIcon,
+  StepProofIcon,
+  TikTokIcon,
 } from "./Icons";
 import {
   SMS_KEYWORD_CONSENT_COPY,
@@ -23,136 +35,307 @@ import {
   smsHref,
 } from "../../lib/smsKeywords";
 import { START_PROJECT_HREF } from "../../lib/contact";
+import { SHOW_BETA_SIGNUP } from "../../lib/siteFlags";
 
+/* Mobile-first landing page (most visitors are on iPhone). Section order
+   follows the client's mockup: hero → how it works → text/online/beta
+   panels → real projects → why us → anywhere → FAQ → question → footer.
+   Desktop reuses the same blocks in wider grids. */
 export default function LandingPage() {
   return (
     <main className="min-h-screen overflow-x-hidden bg-white text-[#0a0a0a] antialiased">
       <Header />
       <Hero />
+      <HowItWorks />
 
-      <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 pb-4 sm:px-6 lg:grid-cols-2 lg:items-start lg:gap-8 lg:px-10">
-        <OrderPanel />
-        <BetaPanel />
+      <div className="mx-auto grid w-full max-w-6xl gap-5 px-4 pt-8 sm:px-6 lg:grid-cols-2 lg:items-start lg:gap-8 lg:px-10 lg:pt-16">
+        {SHOW_BETA_SIGNUP ? (
+          <>
+            <div className="grid gap-5">
+              <OrderPanel />
+              <StartOnlinePanel />
+            </div>
+            <BetaPanel />
+          </>
+        ) : (
+          /* Beta panel hidden (see lib/siteFlags.ts): the two ways to start sit side by side. */
+          <>
+            <OrderPanel />
+            <StartOnlinePanel />
+          </>
+        )}
       </div>
 
-      <TrustRow />
-      <Footer />
+      <RealProjects />
+      <WhyUs />
+
+      <div className="mx-auto grid w-full max-w-6xl gap-5 px-4 pb-8 sm:px-6 lg:grid-cols-2 lg:items-start lg:gap-8 lg:px-10">
+        <Anywhere />
+        <div className="grid gap-5">
+          <Faq />
+          <QuestionPanel />
+        </div>
+      </div>
+
+      <LandingFooter />
     </main>
   );
 }
 
 /* ---------------------------------------------------------------- */
+/* Shared bits                                                      */
+/* ---------------------------------------------------------------- */
 
+function Eyebrow({ children, dark = false }: { children: React.ReactNode; dark?: boolean }) {
+  return (
+    <p
+      className={`flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.16em] ${
+        dark ? "text-[var(--dcl-lime)]" : "text-[var(--dcl-lime-deep)]"
+      }`}
+    >
+      {children}
+      <span aria-hidden="true" className="h-[2px] w-10 bg-current" />
+    </p>
+  );
+}
+
+const H2 = "text-[clamp(30px,8.6vw,52px)] font-black leading-[1.02] tracking-[-0.045em]";
+
+/* Lime pill that opens the visitor's messages app (sms: link). Two-line
+   label on phones so the number is always fully visible. */
+function SmsButton({ keyword, title }: { keyword?: string; title: string }) {
+  const content = (
+    <>
+      <ChatDotsIcon className="h-10 w-10 shrink-0 text-black" />
+      <span className="min-w-0 flex-1 leading-tight">
+        <span className="block text-[17px] font-extrabold tracking-[-0.02em]">{title}</span>
+        <span className="block whitespace-nowrap text-[17px] font-extrabold tracking-[-0.02em]">{SMS_NUMBER.display}</span>
+      </span>
+      <ArrowIcon className="h-6 w-6 shrink-0 transition-transform group-hover:translate-x-1" />
+    </>
+  );
+  const className =
+    "group flex min-h-[64px] w-full items-center gap-3 rounded-full border-[3px] border-black bg-[var(--dcl-lime)] py-2.5 pl-2.5 pr-5 text-black";
+
+  return SMS_NUMBER_ACCEPTS_TEXTS ? (
+    <a href={smsHref(keyword)} className={`${className} transition active:scale-[0.98]`}>
+      {content}
+    </a>
+  ) : (
+    <div className={className}>{content}</div>
+  );
+}
+
+/* ---------------------------------------------------------------- */
+/* 1 · Hero                                                         */
 /* ---------------------------------------------------------------- */
 
 const CATEGORIES = [
   { label: "Boxes", src: "/boxes.png" },
   { label: "Mylar Bags", src: "/mylar-bags.png" },
   { label: "Novelties", src: "/novelties.png" },
-  { label: "And More", src: "/and-more-stack.png" },
 ];
 
-/* Mobile-first, matching the reference mockup: headline, subline and the
-   category row share a narrow left column; the box stack fills the right
-   side and bleeds off the edge. Sizes scale with vw so the layout keeps
-   the same proportions from phone up to desktop. */
 function Hero() {
   return (
-    <section className="relative mx-auto w-full max-w-6xl px-4 pb-8 pt-6 sm:px-6 sm:pb-12 sm:pt-10 lg:px-10 lg:pb-16 lg:pt-14">
-      {/* Stacked product visual */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-[10%] top-0 w-[48%] max-w-[360px] sm:right-0 sm:w-[40%] lg:right-12 lg:w-[30%]"
-      >
-        {/* Lime diagonal band behind the stack */}
-        <div className="absolute inset-y-[4%] -right-6 left-[18%] bg-[var(--dcl-lime)] [clip-path:polygon(45%_0,100%_0,100%_100%,0_100%)]" />
-        <Image
-          src="/Hero-section-image.png"
-          alt=""
-          width={408}
-          height={612}
-          fetchPriority="high"
-          sizes="(min-width: 1024px) 360px, 48vw"
-          className="dcl-float relative h-auto w-full drop-shadow-[0_18px_24px_rgba(0,0,0,0.18)]"
-        />
-      </div>
-
-      <div className="relative z-10">
-        <h1 className="dcl-rise text-[clamp(28px,7.8vw,60px)] font-black leading-[1.02] tracking-[-0.045em] lg:text-[min(6.4vw,84px)]">
-          Custom
+    <section className="mx-auto grid w-full max-w-6xl gap-6 px-4 pb-8 pt-7 sm:px-6 lg:grid-cols-2 lg:items-center lg:gap-10 lg:px-10 lg:pb-16 lg:pt-14">
+      <div className="dcl-rise">
+        <h1 className="text-[clamp(42px,12.4vw,76px)] font-black leading-[0.98] tracking-[-0.05em]">
+          Send
           <br />
-          Packaging
+          Your Idea.
           <br />
-          <span className="whitespace-nowrap">
-            Made{" "}
-            <span className="relative inline-block">
-              <span className="relative z-10 inline-block -rotate-2 rounded-[0.35em] bg-[var(--dcl-lime)] px-[0.16em] pb-[0.05em]">
-                Simple.
-              </span>
-              <Burst className="absolute -right-[0.5em] -top-[0.45em] h-[0.55em] w-[0.55em] text-[var(--dcl-lime-deep)]" />
-            </span>
+          We&rsquo;ll Help
+          <br />
+          <span className="mt-1 inline-block -rotate-2 rounded-[0.3em] bg-[var(--dcl-lime)] px-[0.14em] pb-[0.04em]">
+            Make It.
           </span>
         </h1>
-
-        <p className="mt-3 max-w-[60%] text-[clamp(13px,3.6vw,22px)] font-semibold leading-snug text-zinc-900 sm:mt-5 lg:max-w-[26ch]">
-          Boxes, mylar bags, novelties and more for your brand.
+        <p className="mt-4 max-w-[30ch] text-[17px] font-medium leading-snug text-zinc-800 lg:text-[19px]">
+          Custom packaging for your brand. Boxes, mylar bags, novelties and more.
         </p>
 
-        <ul className="mt-5 grid w-[62%] grid-cols-4 gap-[2%] sm:mt-8 sm:w-[56%] lg:w-[50%] lg:max-w-[560px]">
-          {CATEGORIES.map(({ label, src }) => (
-            <li key={label} className="relative flex flex-col items-center text-center">
-              {/* Lime motion-line doodle — one uniform flourish per icon, pinned
-                  to the icon's top-right corner. Offset/size scale with the icon
-                  (vw clamp), not the whole item, so the gap stays consistent on
-                  mobile and desktop. */}
-              <Burst className="absolute left-[calc(50%+clamp(24px,7vw,42px))] top-0 h-[clamp(14px,4.5vw,24px)] w-[clamp(14px,4.5vw,24px)] text-[var(--dcl-lime-deep)]" />
-              <Image
-                src={src}
-                alt=""
-                width={512}
-                height={512}
-                sizes="(min-width: 1024px) 96px, 15vw"
-                className="aspect-square w-[82%] object-contain"
-              />
-              <span className="mt-1.5 text-balance text-[clamp(10px,2.9vw,17px)] font-extrabold leading-tight">
-                {label}
+        <div className="mt-6 hidden max-w-[420px] lg:block">
+          <HeroActions />
+        </div>
+      </div>
+
+      <div>
+        <HeroVisual />
+        <div className="mt-5 lg:hidden">
+          <HeroActions />
+        </div>
+        <CategoryTiles />
+      </div>
+    </section>
+  );
+}
+
+function HeroActions() {
+  return (
+    <>
+      <SmsButton title="Text Us Your Idea" />
+      <p className="mt-3 text-center lg:text-left">
+        <Link
+          href={START_PROJECT_HREF}
+          className="inline-flex items-center gap-1 py-1 text-[15px] font-extrabold underline decoration-2 underline-offset-4"
+        >
+          Or start your project online <span aria-hidden="true">→</span>
+        </Link>
+      </p>
+    </>
+  );
+}
+
+/* One composed product shot (box, watch-shaped mylar bag, plush) on white,
+   so it blends into the page. It drifts slightly as you scroll. */
+function HeroVisual() {
+  return (
+    <Parallax speed={0.08} max={50} className="mx-auto w-full max-w-[520px]" innerClassName="dcl-float">
+      <Image
+        src="/hero-products.png"
+        alt="Holographic custom box, watch-shaped mylar bag and plush bunny with the DYE CUT LAB cube logo"
+        width={1254}
+        height={1254}
+        priority
+        sizes="(min-width: 1024px) 520px, 92vw"
+        className="h-auto w-full"
+      />
+    </Parallax>
+  );
+}
+function CategoryTiles() {
+  return (
+    <ul className="mt-6 grid grid-cols-3 gap-y-2.5">
+      {CATEGORIES.map(({ label, src }, index) => (
+        <li
+          key={label}
+          className={`flex flex-col items-center px-2 pb-3 pt-2 text-center ${index > 0 ? "border-l-2 border-zinc-200" : ""}`}
+        >
+          <Image src={src} alt="" width={256} height={256} sizes="28vw" className="aspect-square w-[86%] object-contain" />
+          <span className="mt-1 text-[14px] font-extrabold leading-tight">{label}</span>
+        </li>
+      ))}
+      <li className="col-span-3">
+        <Link
+          href={START_PROJECT_HREF}
+          className="flex flex-col items-center justify-center gap-1.5 rounded-[28px] bg-zinc-100 py-4 text-[15px] font-extrabold transition active:scale-[0.99]"
+        >
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-black text-[var(--dcl-lime)]">
+            <PlusIcon className="h-5 w-5" />
+          </span>
+          And More
+        </Link>
+      </li>
+    </ul>
+  );
+}
+
+/* ---------------------------------------------------------------- */
+/* 2 · How it works                                                 */
+/* ---------------------------------------------------------------- */
+
+const STEPS = [
+  { title: "Send Your Idea", body: "Text us a photo, sketch or just describe it.", Icon: StepPhoneIcon },
+  { title: "We Figure It Out", body: "Our team helps with materials, size, and production.", Icon: StepChatIcon },
+  { title: "See Your Proof", body: "Review and approve your design.", Icon: StepProofIcon },
+  { title: "We Make It", body: "We handle production and delivery.", Icon: CubeLogo },
+];
+
+function HowItWorks() {
+  return (
+    <section id="how" aria-labelledby="how-heading" className="relative scroll-mt-6 overflow-hidden bg-[#0a0a0a] text-white">
+      <Parallax speed={0.22} max={150} className="pointer-events-none absolute -right-12 top-6 h-60 w-60 sm:h-80 sm:w-80" innerClassName="h-full w-full">
+        <CubeLogo className="h-full w-full text-white opacity-[0.07]" />
+      </Parallax>
+      <Parallax speed={-0.1} max={90} className="pointer-events-none absolute -left-14 bottom-4 h-44 w-44 sm:h-60 sm:w-60" innerClassName="h-full w-full">
+        <CubeLogo className="h-full w-full text-[var(--dcl-lime)] opacity-[0.12]" />
+      </Parallax>
+      <div className="relative z-10 mx-auto grid w-full max-w-6xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_1.2fr] lg:gap-16 lg:px-10 lg:py-20">
+        <div>
+          <Eyebrow dark>It&rsquo;s easy</Eyebrow>
+          <h2 id="how-heading" className={`mt-3 ${H2}`}>
+            From Idea
+            <br />
+            to Delivered.
+          </h2>
+          <p className="mt-3 text-[16px] font-medium text-zinc-300">No packaging knowledge needed.</p>
+        </div>
+
+        <ol className="relative grid gap-7">
+          <span aria-hidden="true" className="absolute bottom-6 left-[83px] top-6 border-l-2 border-dashed border-[var(--dcl-lime)]/40" />
+          {STEPS.map(({ title, body, Icon }, index) => (
+            <li key={title} className="relative grid grid-cols-[56px_auto_1fr] items-start gap-3">
+              <Icon className="h-14 w-14 text-white" />
+              <span className="relative z-10 mt-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-[var(--dcl-lime)] bg-[#0a0a0a] text-[13px] font-black text-[var(--dcl-lime)]">
+                {index + 1}
+              </span>
+              <span className="mt-1">
+                <span className="block text-[17px] font-extrabold leading-tight">{title}</span>
+                <span className="mt-0.5 block text-[14px] leading-snug text-zinc-400">{body}</span>
               </span>
             </li>
           ))}
-        </ul>
+        </ol>
       </div>
     </section>
   );
 }
 
 /* ---------------------------------------------------------------- */
+/* 3 · Text / start online / beta                                  */
+/* ---------------------------------------------------------------- */
 
-/* Full-width pill that tells the visitor which keyword to text.
-   Tappable (`sms:` link) whenever the number is real and staffed. */
-function SmsPill({ keyword }: { keyword: string }) {
-  const content = (
-    <>
-      <ChatDotsIcon className="h-9 w-9 shrink-0 text-black sm:h-12 sm:w-12" />
-      <span className="min-w-0 flex-1 text-[clamp(13px,3.85vw,24px)] font-extrabold lg:text-[20px] leading-tight tracking-[-0.025em]">
-        Text {keyword} to{" "}
-        <span className="whitespace-nowrap">{SMS_NUMBER.display}</span>
-      </span>
-      <ArrowIcon className="h-5 w-5 shrink-0 transition-transform group-hover:translate-x-1 sm:h-6 sm:w-6" />
-    </>
+function OrderPanel() {
+  return (
+    <section
+      id="order"
+      aria-labelledby="order-heading"
+      className="relative scroll-mt-6 overflow-hidden rounded-[28px] bg-[#0a0a0a] p-5 text-white sm:p-8"
+    >
+      <PhoneSmsIllustration className="absolute -right-3 -top-2 h-[150px] w-[150px] sm:h-[170px] sm:w-[170px]" />
+      <BagLockIcon className="h-9 w-9" />
+      <h2 id="order-heading" className="relative mt-2 text-[clamp(34px,10vw,46px)] font-black leading-[0.98] tracking-[-0.045em]">
+        Need
+        <br />
+        Packaging
+        <br />
+        <span className="text-[var(--dcl-lime)]">Now?</span>
+      </h2>
+      <p className="relative mt-3 max-w-[24ch] text-[16px] font-semibold leading-snug">
+        Text us and our team will help with your order.
+      </p>
+      <div className="relative mt-5">
+        <SmsButton keyword={SMS_KEYWORDS.order} title={`Text ${SMS_KEYWORDS.order} to`} />
+      </div>
+    </section>
   );
+}
 
-  const className =
-    "group flex w-full items-center gap-2 rounded-full border-[3px] border-black bg-[var(--dcl-lime)] py-2 pl-2 pr-3.5 text-black sm:gap-4 sm:py-3 sm:pl-2.5 sm:pr-5";
-
-  if (SMS_NUMBER_ACCEPTS_TEXTS) {
-    return (
-      <a href={smsHref(keyword)} className={`${className} transition active:scale-[0.99]`}>
-        {content}
-      </a>
-    );
-  }
-
-  return <div className={className}>{content}</div>;
+function StartOnlinePanel() {
+  return (
+    <section aria-labelledby="online-heading">
+      <p className="mb-3 text-[16px] font-extrabold">Prefer to start online?</p>
+      <div className="rounded-[28px] bg-zinc-100 p-5 sm:p-8">
+        <LaptopIcon className="h-12 w-12" />
+        <h2 id="online-heading" className="mt-2 text-[28px] font-black leading-[1.02] tracking-[-0.04em]">
+          Start Your
+          <br />
+          Project Online
+        </h2>
+        <p className="mt-2 max-w-[30ch] text-[15px] font-medium leading-snug text-zinc-700">
+          Upload your idea, add details, and our team will reach out.
+        </p>
+        <Link
+          href={START_PROJECT_HREF}
+          className="mt-5 flex min-h-[56px] w-full items-center justify-between rounded-full bg-black px-6 text-[16px] font-extrabold text-white transition active:scale-[0.98]"
+        >
+          Start Now
+          <ArrowIcon className="h-5 w-5" />
+        </Link>
+      </div>
+    </section>
+  );
 }
 
 function BetaPanel() {
@@ -165,106 +348,318 @@ function BetaPanel() {
     <section
       id="beta"
       aria-labelledby="beta-heading"
-      className="scroll-mt-6 rounded-[28px] bg-[var(--dcl-lime-soft)] p-4 sm:rounded-[32px] sm:p-8"
+      className="scroll-mt-6 rounded-[28px] bg-[var(--dcl-lime-soft)] p-5 sm:p-8"
     >
-      <div className="flex items-center gap-2.5 sm:gap-5">
-        <PhoneChatIllustration className="h-[clamp(64px,19vw,112px)] w-[clamp(64px,19vw,112px)] lg:h-[100px] lg:w-[100px] shrink-0 text-black" />
+      <div className="flex items-center gap-3">
+        <PhoneChatIllustration className="h-[84px] w-[84px] shrink-0 text-black" />
         <div className="min-w-0">
-          <h2
-            id="beta-heading"
-            className="relative inline-block whitespace-nowrap text-[clamp(22px,6.4vw,48px)] lg:text-[34px] font-black leading-none tracking-[-0.045em]"
-          >
+          <h2 id="beta-heading" className="relative inline-block text-[28px] font-black leading-none tracking-[-0.045em]">
             Join Our Beta!
-            <Sparkle className="absolute -right-2 -top-3 h-4 w-4 text-[var(--dcl-lime-deep)]" />
+            <Sparkle className="absolute -right-4 -top-3 h-4 w-4 text-[var(--dcl-lime-deep)]" />
           </h2>
-          <p className="mt-2 text-[clamp(12px,3.5vw,18px)] font-semibold lg:text-[16px] leading-snug text-zinc-900">
-            Be the first to try our new tools. Get updates by text.
-          </p>
+          <p className="mt-1.5 text-[15px] font-semibold leading-snug">Packaging is about to get easier.</p>
         </div>
       </div>
-
-      <div className="mt-4 sm:mt-6">
-        <SmsPill keyword={SMS_KEYWORDS.join} />
-      </div>
-
-      <p className="mx-auto mt-2.5 max-w-[52ch] text-center text-[clamp(10px,2.8vw,12px)] leading-relaxed text-zinc-700">
-        {SMS_KEYWORD_CONSENT_COPY}
-        <SmsLegalLinks />
+      <p className="mt-3 text-center text-[15px] font-medium leading-snug text-zinc-800">
+        Get early access to faster quotes, project updates and easier ordering.
       </p>
 
-      {!SMS_KEYWORDS_LIVE && (
-        <p className="mt-2 text-center text-[12px] font-bold text-zinc-900">
-          Rather not text? Sign up with the form below.
-        </p>
-      )}
+      <div className="mt-4">
+        <SmsButton keyword={SMS_KEYWORDS.join} title={`Text ${SMS_KEYWORDS.join} to`} />
+      </div>
 
-      <div className="mt-6 border-t-2 border-dashed border-black/15 pt-5">
+      <div className="mt-6">
+        <p className="flex items-center gap-3 text-[11px] font-extrabold uppercase tracking-[0.14em] text-zinc-500">
+          <span aria-hidden="true" className="h-px flex-1 border-t-2 border-dashed border-black/15" />
+          Or sign up below
+          <span aria-hidden="true" className="h-px flex-1 border-t-2 border-dashed border-black/15" />
+        </p>
+
         {SMS_KEYWORDS_LIVE && (
           <button
             type="button"
             onClick={() => setShowForm((value) => !value)}
             aria-expanded={showForm}
             aria-controls="beta-form"
-            className="mx-auto flex items-center gap-2 text-[14px] font-extrabold underline decoration-2 underline-offset-4"
+            className="mx-auto mt-4 flex items-center gap-2 text-[14px] font-extrabold underline decoration-2 underline-offset-4"
           >
             {showForm ? "Hide the form" : "Prefer email? Sign up with a form"}
           </button>
         )}
 
         {showForm && (
-          <div id="beta-form" className={SMS_KEYWORDS_LIVE ? "mt-5" : undefined}>
+          <div id="beta-form" className="mt-4">
+            <p className="mb-3 text-[16px] font-extrabold">Get beta updates by email.</p>
             <SignupForm />
           </div>
         )}
+      </div>
+
+      <p className="mx-auto mt-5 max-w-[52ch] text-center text-[11px] leading-relaxed text-zinc-700">
+        {SMS_KEYWORD_CONSENT_COPY}
+        <SmsLegalLinks />
+      </p>
+    </section>
+  );
+}
+
+/* ---------------------------------------------------------------- */
+/* 4 · Real projects + why us                                       */
+/* ---------------------------------------------------------------- */
+
+/* src: null shows a dashed "photo coming soon" tile. cover: true is for
+   full studio photos (own background) that fill the tile edge to edge;
+   cut-out PNGs sit centred on the grey tile instead. */
+const PROJECTS: { src: string | null; alt: string; w: number; h: number; cover?: boolean }[] = [
+  { src: "/boxes.png", alt: "Holographic custom mailer box", w: 448, h: 448 },
+  { src: "/mylar-bags.png", alt: "Holographic die-cut mylar bag", w: 320, h: 400 },
+  { src: "/novelties.png", alt: "Custom plush novelty", w: 448, h: 420 },
+  { src: "/dcl-box.png", alt: "Black mailer box with lime DCL graffiti print", w: 1254, h: 1254, cover: true },
+  { src: "/dcl-bag.png", alt: "Holographic stand-up mylar bag with lime DCL print", w: 1254, h: 1254, cover: true },
+  { src: "/sticker-rolls.png", alt: "Rolls of white and lime DCL cube-logo stickers", w: 1254, h: 1254, cover: true },
+];
+
+function RealProjects() {
+  return (
+    <section aria-labelledby="projects-heading" className="mx-auto w-full max-w-6xl px-4 pt-12 sm:px-6 lg:px-10 lg:pt-20">
+      <Eyebrow>Real projects</Eyebrow>
+      <h2 id="projects-heading" className={`mt-3 ${H2}`}>
+        Built for
+        <br />
+        Real Brands.
+      </h2>
+      <p className="mt-3 max-w-[34ch] text-[16px] font-medium leading-snug text-zinc-700">
+        From custom boxes to die cut bags and novelties. If you can imagine it, we can help make it.
+      </p>
+      <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {PROJECTS.map(({ src, alt, w, h, cover }) =>
+          src === null ? (
+            <li
+              key={alt}
+              className="flex aspect-[4/3.4] flex-col items-center justify-center gap-2 rounded-[22px] border-2 border-dashed border-zinc-300 bg-zinc-50 p-6 text-center"
+            >
+              <CubeLogo className="h-10 w-10 text-zinc-300" />
+              <span className="text-[15px] font-extrabold text-zinc-500">{alt}</span>
+              <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-zinc-400">Photo coming soon</span>
+            </li>
+          ) : (
+          <li
+            key={src}
+            className={`relative aspect-[4/3.4] overflow-hidden rounded-[22px] bg-zinc-100 ${cover ? "" : "flex items-center justify-center p-6"}`}
+          >
+            {/* The photo is taller than its frame and slides inside it, so
+                the edges never show (cap < the 10% overscan). */}
+            <Parallax
+              speed={cover ? 0.09 : 0.06}
+              max={cover ? 24 : 16}
+              className={cover ? "absolute -inset-y-[10%] inset-x-0" : "h-full w-full"}
+              innerClassName="h-full w-full"
+            >
+              <Image
+                src={src}
+                alt={alt}
+                width={w}
+                height={h}
+                sizes="(min-width: 1024px) 340px, (min-width: 640px) 45vw, 90vw"
+                className={
+                  cover
+                    ? "h-full w-full object-cover"
+                    : "mx-auto h-full w-auto max-w-full object-contain drop-shadow-[0_14px_18px_rgba(0,0,0,0.14)]"
+                }
+              />
+            </Parallax>
+          </li>
+          )
+        )}
+      </ul>
+    </section>
+  );
+}
+
+const REASONS = [
+  { label: "Fast Quotes", Icon: BoltIcon },
+  { label: "Trusted Factories", Icon: FactoryIcon },
+  { label: "Great Quality", Icon: DiamondIcon },
+  { label: "Worldwide Shipping", Icon: GlobeIcon },
+];
+
+function WhyUs() {
+  return (
+    <section id="about" aria-labelledby="why-heading" className="mx-auto w-full max-w-6xl scroll-mt-6 px-4 py-12 sm:px-6 lg:px-10 lg:py-20">
+      <p className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.16em] text-[var(--dcl-lime-deep)]">
+        Why DYE CUT LAB
+        <span aria-hidden="true" className="h-3 w-9 rounded-full bg-[var(--dcl-lime)]" />
+      </p>
+      <h2 id="why-heading" className={`mt-3 ${H2}`}>
+        Designed for
+        <br />
+        Creators.
+      </h2>
+      <ul className="mt-6 grid grid-cols-2 lg:grid-cols-4">
+        {REASONS.map(({ label, Icon }, index) => (
+          <li
+            key={label}
+            className={`flex flex-col items-center gap-2 px-3 py-7 text-center ${
+              index % 2 === 0 ? "border-r border-zinc-200" : ""
+            } ${index < 2 ? "border-b border-zinc-200 lg:border-b-0" : ""} ${index === 1 ? "lg:border-r" : ""}`}
+          >
+            <Icon className="h-11 w-11" />
+            <span className="text-[15px] font-extrabold leading-tight">{label}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/* ---------------------------------------------------------------- */
+/* 5 · Anywhere, FAQ, question, footer                             */
+/* ---------------------------------------------------------------- */
+
+/* Dotted world map generated once from real geography with the
+   `dotted-map` package (not a site dependency); lime dots mark key
+   markets. Regenerate the SVG to change pins or colours. */
+function DottedMap() {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- static SVG, no optimisation needed
+    <img src="/world-dots.svg" alt="" aria-hidden="true" width={109} height={52} loading="lazy" className="h-auto w-full" />
+  );
+}
+function Anywhere() {
+  return (
+    <section aria-labelledby="anywhere-heading" className="rounded-[28px] bg-[var(--dcl-lime-soft)] p-5 sm:p-8">
+      <div className="flex items-center gap-3">
+        <GlobeIcon className="h-12 w-12 shrink-0" />
+        <h2 id="anywhere-heading" className="text-[24px] font-black leading-[1.05] tracking-[-0.04em]">
+          Work With Us Anywhere.
+        </h2>
+      </div>
+      <p className="mt-2 text-[15px] font-medium text-zinc-700">We support brands around the world.</p>
+      <div className="mt-4">
+        <DottedMap />
       </div>
     </section>
   );
 }
 
-function OrderPanel() {
+/* Answers kept general on purpose — every product is quoted case by case.
+   Update with the client's exact policies (minimums, lead times). */
+const FAQS = [
+  {
+    q: "What's the minimum order?",
+    a: "It depends on the product and finish. Text us your idea and quantity and we'll tell you what's possible.",
+  },
+  {
+    q: "Do you help with the design?",
+    a: "Yes. Send a photo, sketch or description and our team helps with materials, size and artwork before anything is made.",
+  },
+  {
+    q: "What file types can I send?",
+    a: "Photos, sketches, PDFs and design files (AI, PSD, PNG, SVG) all work. If you don't have a file yet, just describe it.",
+  },
+  {
+    q: "How long does production take?",
+    a: "Timing depends on the product and quantity. You'll get a timeline with your quote, before you pay.",
+  },
+  {
+    q: "Do you ship internationally?",
+    a: "We work with brands around the world. Tell us where you are and we'll include shipping in your quote.",
+  },
+  {
+    q: "What can I make with DCL?",
+    a: "Custom boxes, mylar and die-cut bags, labels, novelties and more. If you can imagine it, ask us.",
+  },
+];
+
+function Faq() {
   return (
-    <section
-      id="order"
-      aria-labelledby="order-heading"
-      className="relative scroll-mt-6 overflow-hidden rounded-[28px] bg-[#0a0a0a] p-4 text-white sm:rounded-[32px] sm:p-8"
-    >
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <h2
-            id="order-heading"
-            className="text-[clamp(22px,6.4vw,48px)] lg:text-[34px] font-black leading-[1.02] tracking-[-0.045em]"
-          >
-            <span className="flex items-center gap-2">
-              <BagLockIcon className="h-[1.1em] w-[1.1em] shrink-0" />
-              <span className="whitespace-nowrap">Need Packaging</span>
-            </span>
-            <span className="relative ml-[1.35em] inline-block text-[var(--dcl-lime)]">
-              Now?
-              <Burst className="absolute -right-[0.8em] top-[0.1em] h-[0.6em] w-[0.6em] -scale-x-100 rotate-90 text-[var(--dcl-lime)]" />
-            </span>
-          </h2>
-          <p className="mt-2 max-w-[30ch] text-[clamp(12px,3.6vw,18px)] font-semibold lg:text-[16px] leading-snug text-white">
-            Text us today and our team will help with your order.
-          </p>
-        </div>
-        <PhoneSmsIllustration className="-mr-2 -mt-2 h-[clamp(72px,21vw,144px)] w-[clamp(72px,21vw,144px)] lg:h-[110px] lg:w-[110px] shrink-0" />
+    <section id="faq" aria-labelledby="faq-heading" className="scroll-mt-6">
+      <Eyebrow>FAQ</Eyebrow>
+      <h2 id="faq-heading" className={`mt-3 ${H2}`}>
+        Quick
+        <br />
+        Answers.
+      </h2>
+      <div className="mt-4 divide-y-2 divide-zinc-100 border-y-2 border-zinc-100">
+        {FAQS.map(({ q, a }) => (
+          <details key={q} className="group">
+            <summary className="flex min-h-[52px] cursor-pointer list-none items-center justify-between gap-3 py-3 text-[15px] font-bold [&::-webkit-details-marker]:hidden">
+              {q}
+              <PlusIcon className="h-5 w-5 shrink-0 transition-transform group-open:rotate-45" />
+            </summary>
+            <p className="pb-4 pr-8 text-[14px] leading-relaxed text-zinc-700">{a}</p>
+          </details>
+        ))}
       </div>
-
-      <div className="mt-3 sm:mt-6">
-        <SmsPill keyword={SMS_KEYWORDS.order} />
-      </div>
-
-      {!SMS_KEYWORDS_LIVE && (
-        <p className="mt-4 text-center text-[13px] font-semibold text-zinc-300">
-          Rather type it out?{" "}
-          <Link
-            href={START_PROJECT_HREF}
-            className="whitespace-nowrap font-extrabold text-[var(--dcl-lime)] underline decoration-2 underline-offset-4"
-          >
-            Start your project online →
-          </Link>
-        </p>
-      )}
     </section>
+  );
+}
+
+function QuestionPanel() {
+  return (
+    <section aria-labelledby="question-heading" className="rounded-[28px] bg-[#0a0a0a] p-5 text-white sm:p-8">
+      <h2 id="question-heading" className="text-[26px] font-black leading-none tracking-[-0.04em]">
+        Have a Question?
+      </h2>
+      <p className="mt-2 flex items-center gap-2 text-[15px] font-semibold">
+        <ChatDotsIcon className="h-7 w-7 text-[var(--dcl-lime)] [&_circle]:fill-black" />
+        Text us anytime.
+      </p>
+      <a
+        href={SMS_NUMBER_ACCEPTS_TEXTS ? smsHref() : undefined}
+        className="mt-4 flex min-h-[56px] items-center justify-between rounded-full bg-[var(--dcl-lime)] px-6 text-[16px] font-extrabold text-black transition active:scale-[0.98]"
+      >
+        Text {SMS_NUMBER.display}
+        <ArrowIcon className="h-5 w-5" />
+      </a>
+    </section>
+  );
+}
+
+const SOCIAL_LINKS: { label: string; href: string | null; Icon: typeof InstagramIcon }[] = [
+  { label: "Instagram", href: "https://www.instagram.com/dyecutlab/", Icon: InstagramIcon },
+  { label: "TikTok", href: null, Icon: TikTokIcon },
+];
+
+function LandingFooter() {
+  return (
+    <footer className="border-t-2 border-zinc-100">
+      <div className="mx-auto grid w-full max-w-6xl gap-5 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_auto_auto] lg:items-center lg:gap-10 lg:px-10">
+        <Wordmark compact />
+        <nav aria-label="Footer" className="grid max-w-[280px] grid-cols-2 gap-y-2 text-[15px] font-bold lg:flex lg:max-w-none lg:gap-0">
+          {[
+            ["About", "/#about"],
+            ["Contact", "/#order"],
+            ["Privacy", "/privacy"],
+            ["Terms", "/terms"],
+          ].map(([label, href], index) => (
+            <Link
+              key={label}
+              href={href}
+              className={`py-1 hover:underline ${
+                index % 2 === 0 ? "border-r-2 border-zinc-200 pr-4" : "pl-5"
+              } lg:border-r-2 lg:border-zinc-200 lg:px-5 lg:first:pl-0 lg:last:border-r-0 lg:last:pr-0`}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+        <div className="flex items-center gap-4">
+          {SOCIAL_LINKS.map(({ label, href, Icon }) =>
+            href ? (
+              <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={`DYE CUT LAB on ${label}`}>
+                <Icon className="h-6 w-6" />
+              </a>
+            ) : (
+              <span key={label} title={`${label} — coming soon`} className="text-zinc-400">
+                <Icon className="h-6 w-6" />
+                <span className="sr-only">{label} coming soon</span>
+              </span>
+            )
+          )}
+        </div>
+        <p className="text-[12px] text-zinc-500 lg:col-span-3">© {new Date().getFullYear()} DYE CUT LAB. All rights reserved.</p>
+      </div>
+    </footer>
   );
 }

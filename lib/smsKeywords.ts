@@ -43,6 +43,7 @@ export const SMS_KEYWORD_CONSENT_COPY =
 
 /* `sms:` URI with a prefilled body. `?&body=` is the form that works
    on both iOS and Android. */
-export function smsHref(keyword: string) {
+export function smsHref(keyword?: string) {
+  if (!keyword) return `sms:${SMS_NUMBER.e164}`;
   return `sms:${SMS_NUMBER.e164}?&body=${encodeURIComponent(keyword)}`;
 }
