@@ -21,7 +21,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
 export const ROLE_HOME: Record<AppRole, { path: string; label: string; blurb: string }> = {
   customer: {
     path: "/account",
-    label: "My account",
+    label: "My projects",
     blurb: "Your projects, quotes and orders.",
   },
   dcl_staff: {

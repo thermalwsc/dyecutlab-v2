@@ -12,22 +12,12 @@ import { brandFont } from "../../fonts";
 import { Footer, Header } from "../../updates/SiteChrome";
 import { projectStatusLabel } from "../../admin/statuses";
 import { getBrowserSupabase } from "../../../lib/supabase/browser";
+import { JOURNEY_STEPS, journeyStepIndex } from "../../../lib/projectJourney";
 
-/* Project stages shown in the tracker, built from the real projects.status
-   values (blueprint state machine). */
-const STAGES: { label: string; statuses: string[] }[] = [
-  { label: "Brief", statuses: ["lead", "development"] },
-  { label: "Quote", statuses: ["quote_ready", "factory_review", "approved"] },
-  { label: "Proof", statuses: ["payment", "proof"] },
-  { label: "Production", statuses: ["production", "qc"] },
-  { label: "Delivery", statuses: ["shipping", "delivered"] },
-];
-
-function stageIndex(status: string | null) {
-  const value = (status || "development").toLowerCase();
-  const i = STAGES.findIndex((stage) => stage.statuses.includes(value));
-  return i === -1 ? 0 : i;
-}
+/* Tracker steps come from the shared customer journey (lib/projectJourney.ts),
+   so the project page and the dashboard always agree. */
+const STAGES = JOURNEY_STEPS;
+const stageIndex = journeyStepIndex;
 
 /* Extra details only the DYE CUT LAB team sees. */
 type TeamInfo = { owner: string; factory: string };
