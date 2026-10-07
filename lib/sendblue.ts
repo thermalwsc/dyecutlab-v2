@@ -211,6 +211,8 @@ export async function sendSms(input: {
 export async function sendStaffQuoteSms(input: {
   description: string;
   phone: string;
+  /** Set when a signed-in customer sent the request. */
+  customer?: { name: string; email: string } | null;
 }): Promise<ChannelResult> {
   const staffPhone = getStaffPhone();
 
@@ -228,6 +230,6 @@ export async function sendStaffQuoteSms(input: {
 
   return sendSms({
     to: staffPhone,
-    content: `Hi ${CONTACT.personName} - new DYE CUT LAB quote request.\nText them: ${input.phone}\n\n"${summary}"`,
+    content: `Hi ${CONTACT.personName} - new DYE CUT LAB quote request${input.customer ? ` from ${input.customer.name}` : ""}.\nText them: ${input.phone}${input.customer ? `\n${input.customer.email}` : ""}\n\n"${summary}"`,
   });
 }

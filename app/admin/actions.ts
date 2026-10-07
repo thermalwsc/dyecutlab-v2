@@ -102,17 +102,20 @@ export async function createProjectFromRequest(formData: FormData) {
   const supabase = await getServerSupabase();
   const { data: request } = await supabase
     .from("quote_requests")
-    .select("id, description, project_id")
+    .select("id, description, project_id, user_id")
     .eq("id", id)
     .maybeSingle();
   if (!request) back("/admin/requests", { error: "not_found" });
   if (request.project_id) back(`/admin/projects/${request.project_id}`, { ok: "already_linked" });
 
   const admin = service(path);
+  /* A signed-in customer's request becomes their project (so it shows on their
+     dashboard); a guest's stays unassigned until the team links an account. */
+  const ownerId = request.user_id && (await validOwner(admin, request.user_id)) ? request.user_id : null;
   const title = request.description.split(/[.\n]/)[0].slice(0, 80) || "Project from website request";
   const { data: project, error } = await admin
     .from("projects")
-    .insert({ title, request: request.description, status: "lead", owner_id: null })
+    .insert({ title, request: request.description, status: "lead", owner_id: ownerId })
     .select("id")
     .single();
   if (error || !project) {

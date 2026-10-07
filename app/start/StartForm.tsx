@@ -11,7 +11,7 @@ import {
   PhoneChatIllustration,
   Sparkle,
 } from "../updates/Icons";
-import { DEFAULT_COUNTRY, buildFullPhone, type Country } from "../../lib/countries";
+import { COUNTRIES, DEFAULT_COUNTRY, buildFullPhone, type Country } from "../../lib/countries";
 import { CONTACT } from "../../lib/contact";
 import {
   DESCRIPTION_MAX_LENGTH,
@@ -52,6 +52,19 @@ function customerSmsHref(body: string) {
   return `sms:${CONTACT.phoneE164}?&body=${encodeURIComponent(body)}`;
 }
 
+/* A signed-in customer, from their account (see app/start/page.tsx). */
+export type StartAccount = { name: string; email: string; phone: string | null };
+
+/* "+639175550123" → Philippines + "9175550123". Longest dial code wins, so
+   +852 is Hong Kong rather than +8. Unknown numbers stay as typed. */
+function splitPhone(e164: string | null): { country: Country; local: string } | null {
+  if (!e164 || !e164.startsWith("+")) return null;
+  const match = [...COUNTRIES]
+    .sort((a, b) => b.dial.length - a.dial.length)
+    .find((country) => e164.startsWith(country.dial));
+  return match ? { country: match, local: e164.slice(match.dial.length) } : null;
+}
+
 type ConfirmationData = {
   phone: string;
   smsBody: string;
@@ -59,10 +72,11 @@ type ConfirmationData = {
   truncated: boolean;
 };
 
-export default function StartForm() {
+export default function StartForm({ account = null }: { account?: StartAccount | null }) {
+  const savedPhone = splitPhone(account?.phone ?? null);
   const [description, setDescription] = useState("");
-  const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
-  const [localPhone, setLocalPhone] = useState("");
+  const [country, setCountry] = useState<Country>(savedPhone?.country ?? DEFAULT_COUNTRY);
+  const [localPhone, setLocalPhone] = useState(savedPhone?.local ?? "");
   const [website, setWebsite] = useState(""); // honeypot
   const [errors, setErrors] = useState<QuoteErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -126,9 +140,18 @@ export default function StartForm() {
     }
   }
 
+  /* A separate POST (not part of the request form) to the sign-out route. */
+  function signOut() {
+    const form = document.createElement("form");
+    form.method = "post";
+    form.action = "/auth/signout";
+    document.body.appendChild(form);
+    form.submit();
+  }
+
   function reset() {
     setDescription("");
-    setLocalPhone("");
+    setLocalPhone(savedPhone?.local ?? "");
     setErrors({});
     setFormError(null);
     setConfirmation(null);
@@ -155,6 +178,35 @@ export default function StartForm() {
                 className="rounded-[28px] bg-[var(--dcl-lime-soft)] p-4 sm:rounded-[32px] sm:p-8"
               >
                 <div className="space-y-5">
+                  {account ? (
+                    <div className="rounded-2xl border-2 border-black bg-white px-4 py-3">
+                      <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-zinc-500">Sending as</p>
+                      <p className="mt-0.5 truncate text-[16px] font-extrabold">{account.name}</p>
+                      <p className="break-all text-[14px] font-medium text-zinc-700">{account.email}</p>
+                      <p className="mt-1.5 text-[12px] text-zinc-500">
+                        Filled in from your account.{" "}
+                        <button
+                          type="button"
+                          onClick={signOut}
+                          className="font-bold text-black underline underline-offset-2"
+                        >
+                          Not you? Sign out
+                        </button>
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="rounded-2xl bg-white px-4 py-3 text-[13px] font-medium text-zinc-700">
+                      Have an account?{" "}
+                      <Link
+                        href="/signin?next=/start"
+                        className="font-extrabold text-black underline decoration-2 underline-offset-2"
+                      >
+                        Sign in
+                      </Link>{" "}
+                      and we&rsquo;ll fill in your details and keep your requests together.
+                    </p>
+                  )}
+
                   <div>
                     <div className="flex items-baseline justify-between gap-3">
                       <label htmlFor="quote-description" className="block text-[13px] font-bold text-zinc-900">

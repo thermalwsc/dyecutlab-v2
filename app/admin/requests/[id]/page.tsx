@@ -30,7 +30,7 @@ export default async function RequestDetail({
 
   const { data: request } = await supabase
     .from("quote_requests")
-    .select("id, description, phone, status, created_at, notes, project_id, sms_consent")
+    .select("id, description, phone, status, created_at, notes, project_id, sms_consent, user_id, customer_name, customer_email")
     .eq("id", id)
     .maybeSingle();
   if (!request) notFound();
@@ -52,6 +52,24 @@ export default async function RequestDetail({
         <Panel title="What they want made">
           <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-zinc-800">{request.description}</p>
           <dl className="mt-5 grid gap-3 text-[14px] sm:grid-cols-2">
+            <div>
+              <dt className="font-bold text-zinc-500">Customer</dt>
+              <dd className="font-extrabold">
+                {request.customer_name || (request.user_id ? "Signed-in customer" : "Guest (not signed in)")}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-bold text-zinc-500">Email</dt>
+              <dd>
+                {request.customer_email ? (
+                  <a href={`mailto:${request.customer_email}`} className="break-all font-extrabold underline underline-offset-2">
+                    {request.customer_email}
+                  </a>
+                ) : (
+                  <span className="font-bold text-zinc-500">Not given</span>
+                )}
+              </dd>
+            </div>
             <div>
               <dt className="font-bold text-zinc-500">Phone</dt>
               <dd>
@@ -82,7 +100,10 @@ export default async function RequestDetail({
             ) : (
               <form action={createProjectFromRequest}>
                 <input type="hidden" name="id" value={request.id} />
-                <p className="mb-3 text-[14px] text-zinc-600">Turn this request into a project, prefilled with the description.</p>
+                <p className="mb-3 text-[14px] text-zinc-600">
+                  Turn this request into a project, prefilled with the description
+                  {request.user_id ? " and assigned to this customer, so it shows on their dashboard" : ""}.
+                </p>
                 <button type="submit" className={BTN}>
                   Create project from this request
                 </button>

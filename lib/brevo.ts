@@ -241,6 +241,8 @@ You're receiving this because you signed up for product updates at dyecutlab.com
 export type QuoteNotification = {
   description: string;
   phone: string;
+  /** Set when a signed-in customer sent the request. */
+  customer?: { name: string; email: string } | null;
 };
 
 function getStaffDestinations() {
@@ -268,23 +270,29 @@ export async function sendStaffQuoteEmail(
 
   const phone = escapeHtml(input.phone);
   const description = escapeHtml(input.description).replace(/\n/g, "<br />");
+  const customer = input.customer ?? null;
+  const customerHtml = customer
+    ? `<p style="margin:0 0 18px;font-size:15px;"><b>${escapeHtml(customer.name)}</b> · <a href="mailto:${escapeHtml(customer.email)}" style="color:#0a0a0a;">${escapeHtml(customer.email)}</a> <span style="color:#71717a;">(signed-in customer)</span></p>`
+    : "";
+  const customerText = customer ? `From: ${customer.name} <${customer.email}> (signed-in customer)\n\n` : "";
 
   try {
     await brevoPost("/smtp/email", apiKey, {
       sender: { name: senderName, email: senderEmail },
       to: [{ email: staffEmail }],
-      subject: `New quote request — text ${input.phone}`,
+      subject: `New quote request${customer ? ` from ${customer.name}` : ""} — text ${input.phone}`,
       htmlContent: `<!doctype html>
 <html lang="en">
   <body style="margin:0;padding:24px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#0a0a0a;">
     <p style="margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:0.12em;color:#65a30d;">HI ${escapeHtml(CONTACT.personName.toUpperCase())} — NEW QUOTE REQUEST</p>
-    <p style="margin:0 0 18px;font-size:24px;font-weight:900;">Text them back: <a href="sms:${phone}" style="color:#0a0a0a;">${phone}</a></p>
+    <p style="margin:0 0 ${customer ? "8px" : "18px"};font-size:24px;font-weight:900;">Text them back: <a href="sms:${phone}" style="color:#0a0a0a;">${phone}</a></p>
+    ${customerHtml}
     <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#71717a;">WHAT THEY WANT MADE</p>
     <p style="margin:0;padding:14px 16px;border-radius:14px;background:#f2fadf;font-size:15px;line-height:22px;">${description}</p>
     <p style="margin:18px 0 0;font-size:11px;color:#a1a1aa;">Sent from the /start page. Saved in Supabase → quote_requests.</p>
   </body>
 </html>`,
-      textContent: `Hi ${CONTACT.personName} — new quote request\n\nText them back: ${input.phone}\n\nWhat they want made:\n${input.description}\n\nSaved in Supabase → quote_requests.`,
+      textContent: `Hi ${CONTACT.personName} — new quote request\n\n${customerText}Text them back: ${input.phone}\n\nWhat they want made:\n${input.description}\n\nSaved in Supabase → quote_requests.`,
       tags: ["quote_request_staff"],
     });
 

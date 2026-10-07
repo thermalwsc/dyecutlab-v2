@@ -27,7 +27,16 @@ export const metadata: Metadata = { title: "Quote requests — DYE CUT LAB", rob
 
 const PAGE_SIZE = 20;
 
-type Row = { id: string; description: string; phone: string; status: string; created_at: string; project_id: string | null };
+type Row = {
+  id: string;
+  description: string;
+  phone: string;
+  status: string;
+  created_at: string;
+  project_id: string | null;
+  customer_name: string | null;
+  customer_email: string | null;
+};
 
 export default async function RequestsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
@@ -40,11 +49,11 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
 
   let query = supabase
     .from("quote_requests")
-    .select("id, description, phone, status, created_at, project_id", { count: "exact" })
+    .select("id, description, phone, status, created_at, project_id, customer_name, customer_email", { count: "exact" })
     .order("created_at", { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
   if ((QUOTE_STATUSES as readonly string[]).includes(status)) query = query.eq("status", status);
-  if (q) query = query.or(`description.ilike.%${q}%,phone.ilike.%${q}%`);
+  if (q) query = query.or(`description.ilike.%${q}%,phone.ilike.%${q}%,customer_name.ilike.%${q}%,customer_email.ilike.%${q}%`);
 
   const { data, count, error } = await query;
   if (error) console.error("REQUESTS LIST:", error.message);
@@ -58,7 +67,7 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
       <form className="mt-6 grid gap-3 rounded-2xl border-2 border-zinc-200 bg-white p-4 sm:grid-cols-[1fr_200px_auto] sm:items-end">
         <label className="block text-[13px] font-bold">
           Search
-          <input name="q" defaultValue={q} placeholder="Description or phone" className={FIELD} />
+          <input name="q" defaultValue={q} placeholder="Description, name, email or phone" className={FIELD} />
         </label>
         <label className="block text-[13px] font-bold">
           Status
@@ -80,8 +89,8 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
         <Panel title={`${count ?? 0} request${count === 1 ? "" : "s"}`}>
           {error ? (
             <Empty>
-              Requests can&rsquo;t be read yet. Run <code className="font-bold">20261001000000_team_reads_requests.sql</code> in
-              Supabase.
+              Requests can&rsquo;t be read yet. Run <code className="font-bold">20261001000000_team_reads_requests.sql</code> and{" "}
+              <code className="font-bold">20261006000000_quote_requests_customer.sql</code> in Supabase.
             </Empty>
           ) : rows.length === 0 ? (
             <Empty>No requests match. Try another search or status.</Empty>
@@ -90,6 +99,12 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
               {rows.map((row) => (
                 <li key={row.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
                   <Link href={`/admin/requests/${row.id}`} className="group min-w-0">
+                    {(row.customer_name || row.customer_email) && (
+                      <p className="mb-0.5 truncate text-[13px] font-extrabold">
+                        {row.customer_name}
+                        {row.customer_email && <span className="font-medium text-zinc-600"> · {row.customer_email}</span>}
+                      </p>
+                    )}
                     <p className="line-clamp-2 text-[15px] font-bold leading-snug group-hover:underline">{row.description}</p>
                     <p className="mt-1 text-[13px] text-zinc-600">
                       {formatPhone(row.phone)} · {formatDate(row.created_at)}

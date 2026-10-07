@@ -23,7 +23,15 @@ export const metadata: Metadata = {
 
 const LIST_LIMIT = 5;
 
-type QuoteRow = { id: string; description: string; phone: string; status: string; created_at: string };
+type QuoteRow = {
+  id: string;
+  description: string;
+  phone: string;
+  status: string;
+  created_at: string;
+  customer_name: string | null;
+  customer_email: string | null;
+};
 type ProjectRow = {
   id: string;
   project_number: string;
@@ -57,7 +65,7 @@ export default async function AdminPage() {
   const [quotes, newQuotes, projects, signups] = await Promise.all([
     supabase
       .from("quote_requests")
-      .select("id, description, phone, status, created_at", { count: "exact" })
+      .select("id, description, phone, status, created_at, customer_name, customer_email", { count: "exact" })
       .order("created_at", { ascending: false })
       .limit(LIST_LIMIT),
     supabase.from("quote_requests").select("id", { count: "exact", head: true }).eq("status", "new"),
@@ -117,7 +125,8 @@ export default async function AdminPage() {
           {requestsLocked ? (
             <Empty>
               Requests can&rsquo;t be shown yet. Run the migration{" "}
-              <code className="font-bold">20261001000000_team_reads_requests.sql</code> in Supabase.
+              <code className="font-bold">20261001000000_team_reads_requests.sql</code> and{" "}
+              <code className="font-bold">20261006000000_quote_requests_customer.sql</code> in Supabase.
             </Empty>
           ) : quoteRows.length === 0 ? (
             <Empty>No requests yet. New ones from the website will appear here.</Empty>
@@ -126,6 +135,12 @@ export default async function AdminPage() {
               {quoteRows.map((quote) => (
                 <li key={quote.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
+                    {(quote.customer_name || quote.customer_email) && (
+                      <p className="mb-0.5 truncate text-[13px] font-extrabold">
+                        {quote.customer_name}
+                        {quote.customer_email && <span className="font-medium text-zinc-600"> · {quote.customer_email}</span>}
+                      </p>
+                    )}
                     <Link href={`/admin/requests/${quote.id}`} className="line-clamp-2 text-[15px] font-bold leading-snug hover:underline">{quote.description}</Link>
                     <p className="mt-1 text-[13px] text-zinc-600">
                       <a href={`sms:${quote.phone}`} className="font-bold text-black underline underline-offset-2">
