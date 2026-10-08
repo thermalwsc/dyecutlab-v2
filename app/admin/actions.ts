@@ -26,7 +26,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 /* Per-user write throttle (best effort, in-process) — stops a stuck form or a
    leaked session from hammering the database. */
-const allowWrite = createRateLimiter({ windowMs: 60_000, maxRequests: 60 });
+const isWriteLimited = createRateLimiter({ windowMs: 60_000, maxRequests: 60 });
 
 function uuid(value: FormDataEntryValue | null): string | null {
   const s = typeof value === "string" ? value.trim() : "";
@@ -52,7 +52,7 @@ function back(path: string, params: Record<string, string>): never {
 
 async function team(path: string) {
   const viewer = await requireRole(TEAM, { next: path });
-  if (!allowWrite(viewer.user.id)) back(path, { error: "rate_limited" });
+  if (isWriteLimited(viewer.user.id)) back(path, { error: "rate_limited" });
   return viewer;
 }
 
