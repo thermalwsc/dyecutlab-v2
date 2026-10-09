@@ -238,6 +238,50 @@ export function LaptopIcon({ className }: IconProps) {
   );
 }
 
+/* "Why DYE CUT LAB?" tiles: bolder line (3.5) with a lime accent on each. */
+export function ThoughtIcon({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path
+        d="M14 32c-5 0-8-3-8-7s3-7 7-7c1-5 5-8 10-8 6 0 10 4 10 9 4 0 7 3 7 7s-3 6-7 6H14Z"
+        strokeWidth={3.5}
+        fill="#fff"
+      />
+      <circle cx="16" cy="38.5" r="2.8" strokeWidth={3} fill={LIME} />
+      <circle cx="10.5" cy="43.5" r="1.6" strokeWidth={2.5} fill={LIME} />
+      <path d="M20 25h.01M26 25h.01M32 25h.01" strokeWidth={5} />
+    </Svg>
+  );
+}
+
+export function PuzzleIcon({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path d="M8 18h8a4 4 0 1 1 8 0h8v8a4 4 0 1 1 0 8v8H8V34a4 4 0 1 0 0-8Z" fill={LIME} strokeWidth={3.5} />
+    </Svg>
+  );
+}
+
+export function EyeIcon({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path d="M3 24C9 14 16 10 24 10s15 4 21 14c-6 10-13 14-21 14S9 34 3 24Z" strokeWidth={3.5} fill="#fff" />
+      <circle cx="24" cy="24" r="7.5" strokeWidth={3.5} fill={LIME} />
+      <circle cx="24" cy="24" r="2.8" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
+/* Box with a lime lid. */
+export function CubeIcon({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path d="M24 4 42 14 24 24 6 14Z" fill={LIME} strokeWidth={3.5} />
+      <path d="M6 14v20l18 10 18-10V14M24 24v20" strokeWidth={3.5} />
+    </Svg>
+  );
+}
+
 export function PlusIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" aria-hidden="true" className={className}>

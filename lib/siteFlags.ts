@@ -12,3 +12,8 @@
    The sign-up API (/api/subscribers), the table and the staff alerts are
    untouched, so existing sign-ups and the text keyword keep working. */
 export const SHOW_BETA_SIGNUP = false;
+
+/* The four-icon strip (Fast Quotes, Trusted Factories, Great Quality,
+   English & Spanish) under the /start form. The client asked to remove it, so
+   it is hidden; the component stays in SiteChrome.tsx if it is wanted again. */
+export const SHOW_TRUST_ROW = false;

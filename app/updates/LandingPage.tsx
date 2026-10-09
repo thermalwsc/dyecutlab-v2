@@ -9,11 +9,8 @@ import { Header, SmsLegalLinks, Wordmark } from "./SiteChrome";
 import {
   ArrowIcon,
   BagLockIcon,
-  BoltIcon,
   ChatDotsIcon,
   CubeLogo,
-  DiamondIcon,
-  FactoryIcon,
   GlobeIcon,
   InstagramIcon,
   LaptopIcon,
@@ -21,9 +18,6 @@ import {
   PhoneSmsIllustration,
   PlusIcon,
   Sparkle,
-  StepChatIcon,
-  StepPhoneIcon,
-  StepProofIcon,
   TikTokIcon,
 } from "./Icons";
 import {
@@ -235,44 +229,46 @@ function CategoryTiles() {
 /* 2 · How it works                                                 */
 /* ---------------------------------------------------------------- */
 
+/* Icon artwork lives in /public: icon-*.png (black outline, for light
+   backgrounds) and icon-*-white.png (white outline, for dark backgrounds). */
 const STEPS = [
-  { title: "Send Your Idea", body: "Text us a photo, sketch or just describe it.", Icon: StepPhoneIcon },
-  { title: "We Figure It Out", body: "Our team helps with materials, size, and production.", Icon: StepChatIcon },
-  { title: "See Your Proof", body: "Review and approve your design.", Icon: StepProofIcon },
-  { title: "We Make It", body: "We handle production and delivery.", Icon: CubeLogo },
+  { title: "Send Your Idea", body: "Text us a photo, sketch or just describe it.", icon: "/icon-phone.png" },
+  { title: "We Figure It Out", body: "Our team helps with materials, size, and production.", icon: "/icon-puzzle.png" },
+  { title: "See Your Proof", body: "Review and approve your design.", icon: "/icon-eye.png" },
+  { title: "We Make It", body: "We handle production and delivery.", icon: "/icon-cube.png" },
 ];
 
 function HowItWorks() {
   return (
-    <section id="how" aria-labelledby="how-heading" className="relative scroll-mt-6 overflow-hidden bg-[#0a0a0a] text-white">
+    <section id="how" aria-labelledby="how-heading" className="relative scroll-mt-6 overflow-hidden bg-white text-[#0a0a0a]">
       <Parallax speed={0.22} max={150} className="pointer-events-none absolute -right-12 top-6 h-60 w-60 sm:h-80 sm:w-80" innerClassName="h-full w-full">
-        <CubeLogo className="h-full w-full text-white opacity-[0.07]" />
+        <CubeLogo className="h-full w-full text-black opacity-[0.04]" />
       </Parallax>
       <Parallax speed={-0.1} max={90} className="pointer-events-none absolute -left-14 bottom-4 h-44 w-44 sm:h-60 sm:w-60" innerClassName="h-full w-full">
-        <CubeLogo className="h-full w-full text-[var(--dcl-lime)] opacity-[0.12]" />
+        <CubeLogo className="h-full w-full text-[var(--dcl-lime-deep)] opacity-[0.12]" />
       </Parallax>
       <div className="relative z-10 mx-auto grid w-full max-w-6xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_1.2fr] lg:gap-16 lg:px-10 lg:py-20">
         <div>
-          <Eyebrow dark>It&rsquo;s easy</Eyebrow>
+          <Eyebrow>It&rsquo;s easy</Eyebrow>
           <h2 id="how-heading" className={`mt-3 ${H2}`}>
             From Idea
             <br />
             to Delivered.
           </h2>
-          <p className="mt-3 text-[16px] font-medium text-zinc-300">No packaging knowledge needed.</p>
+          <p className="mt-3 text-[16px] font-medium text-zinc-700">No packaging knowledge needed.</p>
         </div>
 
         <ol className="relative grid gap-7">
-          <span aria-hidden="true" className="absolute bottom-6 left-[83px] top-6 border-l-2 border-dashed border-[var(--dcl-lime)]/40" />
-          {STEPS.map(({ title, body, Icon }, index) => (
+          <span aria-hidden="true" className="absolute bottom-6 left-[83px] top-6 border-l-2 border-dashed border-black/20" />
+          {STEPS.map(({ title, body, icon }, index) => (
             <li key={title} className="relative grid grid-cols-[56px_auto_1fr] items-start gap-3">
-              <Icon className="h-14 w-14 text-white" />
-              <span className="relative z-10 mt-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-[var(--dcl-lime)] bg-[#0a0a0a] text-[13px] font-black text-[var(--dcl-lime)]">
+              <Image src={icon} alt="" width={112} height={112} className="h-14 w-14 object-contain" />
+              <span className="relative z-10 mt-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-black bg-[var(--dcl-lime)] text-[13px] font-black text-black">
                 {index + 1}
               </span>
               <span className="mt-1">
                 <span className="block text-[17px] font-extrabold leading-tight">{title}</span>
-                <span className="mt-0.5 block text-[14px] leading-snug text-zinc-400">{body}</span>
+                <span className="mt-0.5 block text-[14px] leading-snug text-zinc-600">{body}</span>
               </span>
             </li>
           ))}
@@ -291,11 +287,11 @@ function OrderPanel() {
     <section
       id="order"
       aria-labelledby="order-heading"
-      className="relative scroll-mt-6 overflow-hidden rounded-[28px] bg-[#0a0a0a] p-5 text-white sm:p-8"
+      className="relative scroll-mt-6 overflow-hidden rounded-[28px] bg-[#0a0a0a] p-6 text-white sm:p-8"
     >
-      <PhoneSmsIllustration className="absolute -right-3 -top-2 h-[150px] w-[150px] sm:h-[170px] sm:w-[170px]" />
-      <BagLockIcon className="h-9 w-9" />
-      <h2 id="order-heading" className="relative mt-2 text-[clamp(34px,10vw,46px)] font-black leading-[0.98] tracking-[-0.045em]">
+      <PhoneSmsIllustration className="absolute -right-1 -top-3 h-[200px] w-[200px] sm:right-0 sm:h-[230px] sm:w-[230px]" />
+      <BagLockIcon className="relative h-11 w-11" />
+      <h2 id="order-heading" className="relative z-10 mt-3 text-[clamp(38px,11.6vw,54px)] font-black leading-[0.98] tracking-[-0.045em] [text-shadow:-3px_0_#0a0a0a,3px_0_#0a0a0a,0_-3px_#0a0a0a,0_3px_#0a0a0a,-2px_-2px_#0a0a0a,2px_-2px_#0a0a0a,-2px_2px_#0a0a0a,2px_2px_#0a0a0a]">
         Need
         <br />
         Packaging
@@ -422,21 +418,21 @@ const PROJECTS: { src: string | null; alt: string; w: number; h: number; cover?:
 function RealProjects() {
   return (
     <section aria-labelledby="projects-heading" className="mx-auto w-full max-w-6xl px-4 pt-12 sm:px-6 lg:px-10 lg:pt-20">
-      <Eyebrow>Real projects</Eyebrow>
+      <Eyebrow>Real examples</Eyebrow>
       <h2 id="projects-heading" className={`mt-3 ${H2}`}>
-        Built for
+        Made for
         <br />
         Real Brands.
       </h2>
       <p className="mt-3 max-w-[34ch] text-[16px] font-medium leading-snug text-zinc-700">
         From custom boxes to die cut bags and novelties. If you can imagine it, we can help make it.
       </p>
-      <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="mt-6 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3">
         {PROJECTS.map(({ src, alt, w, h, cover }) =>
           src === null ? (
             <li
               key={alt}
-              className="flex aspect-[4/3.4] flex-col items-center justify-center gap-2 rounded-[22px] border-2 border-dashed border-zinc-300 bg-zinc-50 p-6 text-center"
+              className="flex aspect-square flex-col items-center justify-center gap-2 rounded-[22px] border-2 border-dashed border-zinc-300 bg-zinc-50 p-4 text-center lg:aspect-[4/3.4]"
             >
               <CubeLogo className="h-10 w-10 text-zinc-300" />
               <span className="text-[15px] font-extrabold text-zinc-500">{alt}</span>
@@ -445,13 +441,13 @@ function RealProjects() {
           ) : (
           <li
             key={src}
-            className={`relative aspect-[4/3.4] overflow-hidden rounded-[22px] bg-zinc-100 ${cover ? "" : "flex items-center justify-center p-6"}`}
+            className={`relative aspect-square overflow-hidden rounded-[22px] bg-zinc-100 lg:aspect-[4/3.4] ${cover ? "" : "flex items-center justify-center p-4 sm:p-6"}`}
           >
             {/* The photo is taller than its frame and slides inside it, so
                 the edges never show (cap < the 10% overscan). */}
             <Parallax
               speed={cover ? 0.09 : 0.06}
-              max={cover ? 24 : 16}
+              max={cover ? 12 : 8}
               className={cover ? "absolute -inset-y-[10%] inset-x-0" : "h-full w-full"}
               innerClassName="h-full w-full"
             >
@@ -460,7 +456,7 @@ function RealProjects() {
                 alt={alt}
                 width={w}
                 height={h}
-                sizes="(min-width: 1024px) 340px, (min-width: 640px) 45vw, 90vw"
+                sizes="(min-width: 1024px) 340px, 46vw"
                 className={
                   cover
                     ? "h-full w-full object-cover"
@@ -477,37 +473,30 @@ function RealProjects() {
 }
 
 const REASONS = [
-  { label: "Fast Quotes", Icon: BoltIcon },
-  { label: "Trusted Factories", Icon: FactoryIcon },
-  { label: "Great Quality", Icon: DiamondIcon },
-  { label: "Worldwide Shipping", Icon: GlobeIcon },
+  { title: "Any Idea", body: "Send a photo or describe it.", icon: "/icon-idea.png" },
+  { title: "We Figure It Out", body: "No packaging knowledge needed.", icon: "/icon-puzzle.png" },
+  { title: "See Before We Make", body: "Review your proof first.", icon: "/icon-eye.png" },
+  { title: "Made + Delivered", body: "We handle production and delivery.", icon: "/icon-cube.png" },
 ];
 
 function WhyUs() {
   return (
-    <section id="about" aria-labelledby="why-heading" className="mx-auto w-full max-w-6xl scroll-mt-6 px-4 py-12 sm:px-6 lg:px-10 lg:py-20">
-      <p className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.16em] text-[var(--dcl-lime-deep)]">
-        Why DYE CUT LAB
-        <span aria-hidden="true" className="h-3 w-9 rounded-full bg-[var(--dcl-lime)]" />
-      </p>
-      <h2 id="why-heading" className={`mt-3 ${H2}`}>
-        Designed for
-        <br />
-        Creators.
-      </h2>
-      <ul className="mt-6 grid grid-cols-2 lg:grid-cols-4">
-        {REASONS.map(({ label, Icon }, index) => (
-          <li
-            key={label}
-            className={`flex flex-col items-center gap-2 px-3 py-7 text-center ${
-              index % 2 === 0 ? "border-r border-zinc-200" : ""
-            } ${index < 2 ? "border-b border-zinc-200 lg:border-b-0" : ""} ${index === 1 ? "lg:border-r" : ""}`}
-          >
-            <Icon className="h-11 w-11" />
-            <span className="text-[15px] font-extrabold leading-tight">{label}</span>
-          </li>
-        ))}
-      </ul>
+    <section id="about" aria-labelledby="why-heading" className="mx-auto w-full max-w-6xl scroll-mt-6 px-4 pb-12 pt-10 sm:px-6 lg:px-10 lg:pb-20 lg:pt-16">
+      <div className="rounded-[28px] bg-[#0a0a0a] p-4 text-white sm:p-8">
+        <h2 id="why-heading" className="flex items-center gap-3 px-1 text-[clamp(24px,7vw,34px)] font-black tracking-[-0.04em]">
+          Why DYE CUT LAB?
+          <span aria-hidden="true" className="h-[3px] w-9 rounded-full bg-[var(--dcl-lime)]" />
+        </h2>
+        <ul className="mt-5 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
+          {REASONS.map(({ title, body, icon }) => (
+            <li key={title} className="flex flex-col items-center rounded-[20px] bg-white px-3 py-5 text-center text-black">
+              <Image src={icon} alt="" width={128} height={128} className="h-14 w-14 object-contain" />
+              <span className="mt-2.5 text-[15px] font-extrabold leading-tight">{title}</span>
+              <span className="mt-1 text-[12.5px] leading-snug text-zinc-600">{body}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </section>
   );
 }
@@ -626,25 +615,29 @@ function LandingFooter() {
     <footer className="border-t-2 border-zinc-100">
       <div className="mx-auto grid w-full max-w-6xl gap-5 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_auto_auto] lg:items-center lg:gap-10 lg:px-10">
         <Wordmark compact />
-        <nav aria-label="Footer" className="grid max-w-[280px] grid-cols-2 gap-y-2 text-[15px] font-bold lg:flex lg:max-w-none lg:gap-0">
+        {/* Phones: one full-width row per link with an arrow, like the mockup.
+            Desktop: a plain inline row. */}
+        <nav
+          aria-label="Footer"
+          className="divide-y-2 divide-zinc-100 border-y-2 border-zinc-100 text-[16px] font-bold lg:flex lg:gap-8 lg:divide-y-0 lg:border-0 lg:text-[15px]"
+        >
           {[
             ["About", "/#about"],
             ["Contact", "/#order"],
             ["Privacy", "/privacy"],
             ["Terms", "/terms"],
-          ].map(([label, href], index) => (
+          ].map(([label, href]) => (
             <Link
               key={label}
               href={href}
-              className={`py-1 hover:underline ${
-                index % 2 === 0 ? "border-r-2 border-zinc-200 pr-4" : "pl-5"
-              } lg:border-r-2 lg:border-zinc-200 lg:px-5 lg:first:pl-0 lg:last:border-r-0 lg:last:pr-0`}
+              className="flex min-h-[54px] items-center justify-between py-3 hover:underline lg:min-h-0 lg:py-1"
             >
               {label}
+              <ArrowIcon className="h-4 w-4 lg:hidden" />
             </Link>
           ))}
         </nav>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-5">
           {SOCIAL_LINKS.map(({ label, href, Icon }) =>
             href ? (
               <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={`DYE CUT LAB on ${label}`}>

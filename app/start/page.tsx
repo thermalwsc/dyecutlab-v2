@@ -4,6 +4,7 @@ import StartForm, { type StartAccount } from "./StartForm";
 import { Footer, Header, TrustRow } from "../updates/SiteChrome";
 import { getViewer, viewerName } from "../../lib/auth/viewer";
 import { getServerSupabase } from "../../lib/supabase/server";
+import { SHOW_TRUST_ROW } from "../../lib/siteFlags";
 
 /* TEMPORARY stand-in for the DICI chat (/app) while it is being fixed.
    Removal steps live next to START_PROJECT_HREF in lib/contact.ts. */
@@ -49,7 +50,7 @@ export default async function StartPage() {
       <main className="min-h-screen overflow-x-hidden bg-white text-[#0a0a0a] antialiased">
         <Header />
         <StartForm account={account} />
-        <TrustRow />
+        {SHOW_TRUST_ROW && <TrustRow />}
         <Footer />
       </main>
     </div>
