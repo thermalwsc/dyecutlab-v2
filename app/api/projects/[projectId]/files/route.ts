@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getRouteSupabase, unauthorized } from "../../../../../lib/supabase/route";
+import { forbidden, getRouteSupabase, unauthorized } from "../../../../../lib/supabase/route";
+import { MAX_FILES_PER_PROJECT, UPLOAD_ALLOWED_EXTENSIONS, UPLOAD_MAX_BYTES, checkUsage, fileExtension } from "../../../../../lib/usageLimits";
 
 
 /*
@@ -83,8 +84,9 @@ export async function GET(
 ) {
   try {
     const { projectId } = await context.params;
-    const { supabase, user } = await getRouteSupabase();
+    const { supabase, user, role } = await getRouteSupabase();
     if (!user) return unauthorized();
+    if (role === "factory") return forbidden();
 
     /*
     |--------------------------------------------------------------------------
@@ -363,8 +365,20 @@ export async function POST(
 ) {
   try {
     const { projectId } = await context.params;
-    const { supabase, user } = await getRouteSupabase();
+    const { supabase, user, role } = await getRouteSupabase();
     if (!user) return unauthorized();
+    if (role === "factory") return forbidden();
+    const limited = await checkUsage(user.id, "upload");
+    if (limited) return limited;
+    
+    /* Refuse oversized bodies before reading them into memory. */
+    const declaredBytes = Number(request.headers.get("content-length") ?? 0);
+    if (declaredBytes > UPLOAD_MAX_BYTES + 1024 * 1024) {
+      return NextResponse.json(
+        { error: `That file is too large. The limit is ${UPLOAD_MAX_BYTES / (1024 * 1024)} MB.` },
+        { status: 413 }
+      );
+    }
 
     /*
     |--------------------------------------------------------------------------
@@ -411,6 +425,34 @@ export async function POST(
         {
           error: "The selected file is empty.",
         },
+        { status: 400 }
+      );
+    }
+
+    if (fileValue.size > UPLOAD_MAX_BYTES) {
+      return NextResponse.json(
+        { error: `That file is too large. The limit is ${UPLOAD_MAX_BYTES / (1024 * 1024)} MB.` },
+        { status: 413 }
+      );
+    }
+
+    if (!UPLOAD_ALLOWED_EXTENSIONS.includes(fileExtension(fileValue.name))) {
+      return NextResponse.json(
+        {
+          error: `That file type isn't supported. Allowed: ${UPLOAD_ALLOWED_EXTENSIONS.join(", ")}.`,
+        },
+        { status: 415 }
+      );
+    }
+
+    const { count: existingFiles } = await supabase
+      .from("project_files")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", project.id);
+
+    if ((existingFiles ?? 0) >= MAX_FILES_PER_PROJECT) {
+      return NextResponse.json(
+        { error: `This project already has ${MAX_FILES_PER_PROJECT} files, which is the limit.` },
         { status: 400 }
       );
     }

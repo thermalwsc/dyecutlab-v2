@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
-import { getRouteSupabase, unauthorized } from "../../../lib/supabase/route";
+import { forbidden, getRouteSupabase, unauthorized } from "../../../lib/supabase/route";
+import { MAX_CHAT_CHARS, checkUsage } from "../../../lib/usageLimits";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -237,8 +238,11 @@ not unnecessarily block creation of the project.
 `;
 
 export async function POST(request: Request) {
-  const { user } = await getRouteSupabase();
+  const { user, role } = await getRouteSupabase();
   if (!user) return unauthorized();
+  if (role === "factory") return forbidden();
+  const limited = await checkUsage(user.id, "chat");
+  if (limited) return limited;
 
   try {
     if (!process.env.OPENAI_API_KEY) {
@@ -256,6 +260,13 @@ export async function POST(request: Request) {
       typeof body.message === "string" ? body.message.trim() : "";
 
     const project = body.project ?? {};
+
+    if (message.length > MAX_CHAT_CHARS) {
+      return NextResponse.json(
+        { error: `Please keep messages under ${MAX_CHAT_CHARS} characters.` },
+        { status: 413 }
+      );
+    }
 
     if (!message) {
       return NextResponse.json(

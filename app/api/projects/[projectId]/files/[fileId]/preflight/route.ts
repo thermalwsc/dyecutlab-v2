@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getRouteSupabase, unauthorized } from "../../../../../../../lib/supabase/route";
+import { forbidden, getRouteSupabase, unauthorized } from "../../../../../../../lib/supabase/route";
+import { checkUsage } from "../../../../../../../lib/usageLimits";
 import { PDFArray, PDFDocument, PDFName, PDFNumber } from "pdf-lib";
 
 /*
@@ -264,8 +265,11 @@ export async function POST(
       fileId,
     } = await context.params;
 
-    const { supabase, user } = await getRouteSupabase();
+    const { supabase, user, role } = await getRouteSupabase();
     if (!user) return unauthorized();
+    if (role === "factory") return forbidden();
+    const limited = await checkUsage(user.id, "preflight");
+    if (limited) return limited;
 
     /*
     |--------------------------------------------------------------------------

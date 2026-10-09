@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getRouteSupabase, unauthorized } from "../../../../lib/supabase/route";
+import { forbidden, getRouteSupabase, unauthorized } from "../../../../lib/supabase/route";
 
 
 /*
@@ -14,8 +14,9 @@ export async function GET(
 ) {
   try {
     const { projectId } = await context.params;
-    const { supabase, user } = await getRouteSupabase();
+    const { supabase, user, role } = await getRouteSupabase();
     if (!user) return unauthorized();
+    if (role === "factory") return forbidden();
 
     const { data, error } = await supabase
       .from("projects")
@@ -74,8 +75,9 @@ export async function PATCH(
 ) {
   try {
     const { projectId } = await context.params;
-    const { supabase, user } = await getRouteSupabase();
+    const { supabase, user, role } = await getRouteSupabase();
     if (!user) return unauthorized();
+    if (role === "factory") return forbidden();
 
     const body = await request.json();
 

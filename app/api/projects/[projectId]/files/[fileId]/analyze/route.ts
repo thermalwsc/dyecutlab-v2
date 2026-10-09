@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getRouteSupabase, unauthorized } from "../../../../../../../lib/supabase/route";
+import { forbidden, getRouteSupabase, unauthorized } from "../../../../../../../lib/supabase/route";
+import { checkUsage } from "../../../../../../../lib/usageLimits";
 import OpenAI from "openai";
 
 /*
@@ -268,8 +269,11 @@ export async function POST(
     }>;
   }
 ) {
-  const { supabase, user } = await getRouteSupabase();
-    if (!user) return unauthorized();
+  const { supabase, user, role } = await getRouteSupabase();
+  if (!user) return unauthorized();
+  if (role === "factory") return forbidden();
+  const limited = await checkUsage(user.id, "analyze");
+  if (limited) return limited;
 
   let analysisId:
     | string

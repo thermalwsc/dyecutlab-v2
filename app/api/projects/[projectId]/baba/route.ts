@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getRouteSupabase, unauthorized } from "../../../../../lib/supabase/route";
+import { forbidden, getRouteSupabase, unauthorized } from "../../../../../lib/supabase/route";
+import { MAX_CHAT_CHARS, checkUsage } from "../../../../../lib/usageLimits";
 import OpenAI from "openai";
 
 
@@ -132,8 +133,11 @@ export async function POST(
     const { projectId } =
       await context.params;
 
-    const { supabase, user } = await getRouteSupabase();
+    const { supabase, user, role } = await getRouteSupabase();
     if (!user) return unauthorized();
+    if (role === "factory") return forbidden();
+    const limited = await checkUsage(user.id, "chat");
+    if (limited) return limited;
 
     const openai =
       getOpenAI();
@@ -146,6 +150,13 @@ export async function POST(
       "string"
         ? body.message.trim()
         : "";
+
+        if (message.length > MAX_CHAT_CHARS) {
+      return NextResponse.json(
+        { error: `Please keep messages under ${MAX_CHAT_CHARS} characters.` },
+        { status: 413 }
+      );
+    }
 
     if (!message) {
       return NextResponse.json(
