@@ -364,3 +364,55 @@ export async function sendStaffSignupEmail(input: {
     return { status: "failed", detail: errorMessage(error) };
   }
 }
+
+/* Team alert when a FACTORY moves a project (production → quality check →
+   shipped). Email is the record; the matching text is in lib/sendblue.ts. */
+export async function sendStaffFactoryUpdateEmail(input: {
+  projectNumber: string;
+  projectTitle: string;
+  factoryName: string;
+  toLabel: string;
+  projectUrl: string;
+}): Promise<ChannelResult> {
+  const { apiKey, senderEmail, senderName } = getEmailConfig();
+  const { email: staffEmail } = getStaffDestinations();
+
+  if (!apiKey) {
+    return { status: "skipped", detail: "BREVO_API_KEY is not configured." };
+  }
+
+  if (!senderEmail) {
+    return {
+      status: "skipped",
+      detail: "BREVO_SENDER_EMAIL is not configured.",
+    };
+  }
+
+  const headline = `${input.factoryName} moved ${input.projectNumber} to ${input.toLabel}`;
+
+  try {
+    await brevoPost("/smtp/email", apiKey, {
+      sender: { name: senderName, email: senderEmail },
+      to: [{ email: staffEmail }],
+      subject: headline,
+      htmlContent: `<!doctype html>
+<html lang="en">
+  <body style="margin:0;padding:24px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#0a0a0a;">
+    <p style="margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:0.12em;color:#65a30d;">HI ${escapeHtml(CONTACT.personName.toUpperCase())} — FACTORY UPDATE</p>
+    <p style="margin:0 0 18px;font-size:24px;font-weight:900;">${escapeHtml(headline)}</p>
+    <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#71717a;">PROJECT</p>
+    <p style="margin:0 0 18px;padding:14px 16px;border-radius:14px;background:#f2fadf;font-size:15px;line-height:22px;">${escapeHtml(input.projectNumber)} · ${escapeHtml(input.projectTitle)}</p>
+    <p style="margin:0;font-size:14px;"><a href="${escapeHtml(input.projectUrl)}" style="color:#0a0a0a;font-weight:700;">Open it in the team workspace</a></p>
+    <p style="margin:18px 0 0;font-size:11px;color:#a1a1aa;">The customer's dashboard already shows the new status.</p>
+  </body>
+</html>`,
+      textContent: `Hi ${CONTACT.personName} — factory update\n\n${headline}\n${input.projectNumber} · ${input.projectTitle}\n\nOpen it: ${input.projectUrl}\n\nThe customer's dashboard already shows the new status.`,
+      tags: ["factory_update_staff"],
+    });
+
+    return { status: "sent" };
+  } catch (error) {
+    console.error("BREVO FACTORY UPDATE EMAIL ERROR:", error);
+    return { status: "failed", detail: errorMessage(error) };
+  }
+}

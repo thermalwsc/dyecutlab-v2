@@ -233,3 +233,24 @@ export async function sendStaffQuoteSms(input: {
     content: `Hi ${CONTACT.personName} - new DYE CUT LAB quote request${input.customer ? ` from ${input.customer.name}` : ""}.\nText them: ${input.phone}${input.customer ? `\n${input.customer.email}` : ""}\n\n"${summary}"`,
   });
 }
+
+/* Staff text when a factory moves a project (the email is the full record). */
+export async function sendStaffFactoryUpdateSms(input: {
+  projectNumber: string;
+  factoryName: string;
+  toLabel: string;
+}): Promise<ChannelResult> {
+  const staffPhone = getStaffPhone();
+
+  if (!staffPhone) {
+    return {
+      status: "skipped",
+      detail: "STAFF_NOTIFY_PHONE is not configured.",
+    };
+  }
+
+  return sendSms({
+    to: staffPhone,
+    content: `Hi ${CONTACT.personName} - ${input.factoryName} moved ${input.projectNumber} to ${input.toLabel}.`,
+  });
+}
