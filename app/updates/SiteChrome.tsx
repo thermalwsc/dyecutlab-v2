@@ -4,11 +4,11 @@
    Start-your-project page (/start): wordmark, header + menu, trust row,
    footer. */
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
   BoltIcon,
-  CubeLogo,
   DiamondIcon,
   FactoryIcon,
   GlobeIcon,
@@ -36,6 +36,10 @@ const NAV_LINKS = [
   { label: "Start your project", href: START_PROJECT_HREF },
 ];
 
+/* The DYE CUT LAB logo. `inverted` is the white version for dark backgrounds
+   (the black footer). Artwork: public/dcl-logo.png and dcl-logo-white.png,
+   made from the client's logo file. The logo already spells out the name, so
+   there is no separate text or tagline next to it. */
 export function Wordmark({
   inverted = false,
   compact = false,
@@ -44,30 +48,16 @@ export function Wordmark({
   compact?: boolean;
 }) {
   return (
-    <Link href="/" className="flex items-center gap-2.5" aria-label="DYE CUT LAB home">
-      <CubeLogo
-        className={`shrink-0 ${compact ? "h-7 w-7 sm:h-9 sm:w-9" : "h-9 w-9"} ${
-          inverted ? "text-white" : "text-black"
-        }`}
+    <Link href="/" className="flex items-center" aria-label="DYE CUT LAB home">
+      <Image
+        src={inverted ? "/dcl-logo-white.png" : "/dcl-logo.png"}
+        alt="DYE CUT LAB"
+        width={1600}
+        height={855}
+        priority={!compact}
+        sizes="120px"
+        className={`w-auto ${compact ? "h-10 sm:h-12" : "h-12 sm:h-14"}`}
       />
-      <span className="leading-none">
-        <span
-          className={`block font-black tracking-[-0.02em] ${
-            compact ? "text-[16px] sm:text-[24px]" : "text-[22px] sm:text-[26px]"
-          }`}
-        >
-          DYE CUT LAB
-        </span>
-        <span
-          className={`mt-1 block whitespace-nowrap font-bold tracking-[0.2em] uppercase ${
-            compact ? "text-[5.5px] sm:text-[8px]" : "text-[7.5px] sm:text-[9px]"
-          } ${
-            inverted ? "text-zinc-300" : "text-zinc-700"
-          }`}
-        >
-          Custom packaging made simple
-        </span>
-      </span>
     </Link>
   );
 }

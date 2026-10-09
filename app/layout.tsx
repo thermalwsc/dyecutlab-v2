@@ -12,7 +12,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+/* metadataBase turns the relative preview-image paths below into full web
+   addresses, which link previews (texts, WhatsApp, social) require. */
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://dyecutlab.com"),
   title: "DYE CUT LAB — Custom Print + Packaging",
   description:
     "DYE CUT LAB with DICI: custom print and packaging in one conversation. Sign up for updates or start your project.",
