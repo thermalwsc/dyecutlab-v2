@@ -1074,10 +1074,7 @@ export async function POST(
 
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "PDF Production Preflight could not inspect this file.",
+        error: "PDF Production Preflight could not inspect this file.",
       },
       {
         status: 500,

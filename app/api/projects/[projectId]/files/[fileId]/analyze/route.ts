@@ -1021,10 +1021,9 @@ Never claim that your visual inspection replaces production preflight.
     */
 
     if (analysisId) {
+      /* The real error is in the server log; this text is shown to customers. */
       const message =
-        error instanceof Error
-          ? error.message
-          : "Unknown analysis error.";
+        "We couldn't analyze this file. Please try again, or text us if it keeps failing.";
 
       const {
         error:
@@ -1057,10 +1056,7 @@ Never claim that your visual inspection replaces production preflight.
 
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "File Intelligence could not analyze this file.",
+        error: "File Intelligence could not analyze this file.",
       },
       {
         status: 500,

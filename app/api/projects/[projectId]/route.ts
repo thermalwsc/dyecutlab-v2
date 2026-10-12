@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { forbidden, getRouteSupabase, unauthorized } from "../../../../lib/supabase/route";
+import { pickChatProject } from "../../../../lib/chatProject";
 
 
 /*
@@ -30,7 +31,6 @@ export async function GET(
       return NextResponse.json(
         {
           error: "Project could not be loaded.",
-          details: error.message,
         },
         { status: 500 }
       );
@@ -46,17 +46,14 @@ export async function GET(
     }
 
     return NextResponse.json({
-      project: data,
+      project: pickChatProject(data),
     });
   } catch (error) {
     console.error("PROJECT GET ERROR:", error);
 
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Project could not be loaded.",
+        error: "Project could not be loaded.",
       },
       { status: 500 }
     );
@@ -126,7 +123,6 @@ export async function PATCH(
       return NextResponse.json(
         {
           error: "Project lookup failed.",
-          details: lookupError.message,
         },
         { status: 500 }
       );
@@ -165,7 +161,6 @@ export async function PATCH(
       return NextResponse.json(
         {
           error: "Project could not be updated.",
-          details: updateError.message,
         },
         { status: 500 }
       );
@@ -214,17 +209,14 @@ export async function PATCH(
 
     return NextResponse.json({
       success: true,
-      project: updatedProject,
+      project: pickChatProject(updatedProject),
     });
   } catch (error) {
     console.error("PROJECT PATCH ERROR:", error);
 
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Project could not be updated.",
+        error: "Project could not be updated.",
       },
       { status: 500 }
     );

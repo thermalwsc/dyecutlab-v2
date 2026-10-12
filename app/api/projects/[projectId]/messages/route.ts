@@ -55,7 +55,6 @@ export async function GET(
       return NextResponse.json(
         {
           error: "Project could not be loaded.",
-          details: projectError.message,
         },
         { status: 500 }
       );
@@ -103,7 +102,6 @@ export async function GET(
         {
           error:
             "Project conversation could not be loaded.",
-          details: messagesError.message,
         },
         { status: 500 }
       );
@@ -128,10 +126,7 @@ export async function GET(
 
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Project conversation could not be loaded.",
+        error: "Project conversation could not be loaded.",
       },
       { status: 500 }
     );

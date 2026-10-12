@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { forbidden, getRouteSupabase, unauthorized } from "../../../../../lib/supabase/route";
+import { CHAT_EDITABLE_FIELDS, cleanChatUpdates, rejectedNote } from "../../../../../lib/chatUpdates";
+import { pickChatProject, projectForModel } from "../../../../../lib/chatProject";
 import { MAX_CHAT_CHARS, checkUsage } from "../../../../../lib/usageLimits";
 import OpenAI from "openai";
 
@@ -26,20 +28,8 @@ function getOpenAI() {
 |--------------------------------------------------------------------------
 */
 
-const editableFields = [
-  "units",
-  "flavor_count",
-  "pouch_size",
-  "box_dimensions",
-  "material",
-  "finish",
-  "closure",
-  "artwork_status",
-  "size",
-] as const;
+const editableFields = CHAT_EDITABLE_FIELDS;
 
-type EditableField =
-  (typeof editableFields)[number];
 
 /*
 |--------------------------------------------------------------------------
@@ -177,7 +167,7 @@ export async function POST(
     */
 
     const {
-      data: project,
+      data: projectRow,
       error: projectError,
     } = await supabase
       .from("projects")
@@ -187,6 +177,15 @@ export async function POST(
         projectId
       )
       .maybeSingle();
+
+    /* Only the allowed fields go any further (see lib/chatProject.ts). */
+    const project = projectRow
+      ? (pickChatProject(projectRow) as {
+          id: string;
+          units: number | null;
+          flavor_count: number | null;
+        } & Record<string, unknown>)
+      : null;
 
     if (projectError) {
       console.error(
@@ -199,8 +198,6 @@ export async function POST(
           error:
             "Project could not be loaded.",
 
-          details:
-            projectError.message,
         },
         {
           status: 500,
@@ -265,8 +262,6 @@ export async function POST(
           error:
             "Project files could not be loaded for BABA.",
 
-          details:
-            projectFilesError.message,
         },
         {
           status: 500,
@@ -341,8 +336,6 @@ export async function POST(
           error:
             "File Intelligence could not be loaded for BABA.",
 
-          details:
-            fileAnalysesError.message,
         },
         {
           status: 500,
@@ -402,19 +395,6 @@ export async function POST(
           };
         }
       );
-
-    /*
-    |--------------------------------------------------------------------------
-    | SAVE USER MESSAGE
-    |--------------------------------------------------------------------------
-    */
-
-    await saveMessage(
-      supabase,
-      project.id,
-      "user",
-      message
-    );
 
     /*
     |--------------------------------------------------------------------------
@@ -803,7 +783,7 @@ Return a short natural reply that directly addresses the customer's newest messa
             content:
               JSON.stringify({
                 currentProject:
-                  project,
+                  projectForModel(project),
 
                 projectFiles:
                   filesWithIntelligence,
@@ -987,102 +967,34 @@ Return a short natural reply that directly addresses the customer's newest messa
 
     /*
     |--------------------------------------------------------------------------
-    | BUILD PRECISE UPDATE
+    | CHECK WHAT THE AI WANTS TO CHANGE
     |--------------------------------------------------------------------------
+    |
+    | Unusable values (0 units, 2.5 flavors, absurdly large numbers, over-long
+    | text) are dropped and mentioned in the reply; they never cancel the reply.
+    | See lib/chatUpdates.ts.
+    |
     */
 
-    const updates: Record<
-      string,
-      unknown
-    > = {};
-
-    for (
-      const field of changedFields
-    ) {
-      if (
-        editableFields.includes(
-          field as EditableField
-        ) &&
-        values[field] !== null &&
-        values[field] !==
-          undefined
-      ) {
-        updates[field] =
-          values[field];
-      }
-    }
+    const { updates, rejected } = cleanChatUpdates(changedFields, values);
+    const replyText = babaReply + rejectedNote(rejected);
 
     /*
     |--------------------------------------------------------------------------
-    | VALIDATE UNITS
+    | SAVE THE CUSTOMER'S MESSAGE
     |--------------------------------------------------------------------------
+    |
+    | Saved only now that the AI has answered, so a failed attempt leaves no
+    | unanswered message and a retry never doubles up in the history.
+    |
     */
 
-    if (
-      updates.units !==
-      undefined
-    ) {
-      const units =
-        Number(
-          updates.units
-        );
-
-      if (
-        !Number.isInteger(
-          units
-        ) ||
-        units <= 0
-      ) {
-        return NextResponse.json(
-          {
-            error:
-              "Units must be a positive whole number.",
-          },
-          {
-            status: 400,
-          }
-        );
-      }
-
-      updates.units =
-        units;
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | VALIDATE FLAVOR COUNT
-    |--------------------------------------------------------------------------
-    */
-
-    if (
-      updates.flavor_count !==
-      undefined
-    ) {
-      const flavorCount =
-        Number(
-          updates.flavor_count
-        );
-
-      if (
-        !Number.isInteger(
-          flavorCount
-        ) ||
-        flavorCount <= 0
-      ) {
-        return NextResponse.json(
-          {
-            error:
-              "Flavor count must be a positive whole number.",
-          },
-          {
-            status: 400,
-          }
-        );
-      }
-
-      updates.flavor_count =
-        flavorCount;
-    }
+    await saveMessage(
+      supabase,
+      project.id,
+      "user",
+      message
+    );
 
     /*
     |--------------------------------------------------------------------------
@@ -1149,7 +1061,7 @@ Return a short natural reply that directly addresses the customer's newest messa
         supabase,
         project.id,
         "baba",
-        babaReply
+        replyText
       );
 
       return NextResponse.json({
@@ -1162,7 +1074,7 @@ Return a short natural reply that directly addresses the customer's newest messa
         project,
 
         reply:
-          babaReply,
+          replyText,
       });
     }
 
@@ -1193,8 +1105,6 @@ Return a short natural reply that directly addresses the customer's newest messa
           error:
             "BABA understood the change but could not save it.",
 
-          details:
-            updateError.message,
         },
         {
           status: 500,
@@ -1231,8 +1141,6 @@ Return a short natural reply that directly addresses the customer's newest messa
           error:
             "Project was updated but could not be reloaded.",
 
-          details:
-            refreshError.message,
         },
         {
           status: 500,
@@ -1250,7 +1158,7 @@ Return a short natural reply that directly addresses the customer's newest messa
       supabase,
       project.id,
       "baba",
-      babaReply
+      replyText
     );
 
     /*
@@ -1286,10 +1194,10 @@ Return a short natural reply that directly addresses the customer's newest messa
       updates,
 
       project:
-        updatedProject,
+        pickChatProject(updatedProject),
 
       reply:
-        babaReply,
+        replyText,
     });
   } catch (error) {
     console.error(
@@ -1299,10 +1207,7 @@ Return a short natural reply that directly addresses the customer's newest messa
 
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "BABA could not process the project update.",
+        error: "BABA could not process the project update.",
       },
       {
         status: 500,

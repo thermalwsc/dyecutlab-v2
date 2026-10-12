@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import { forbidden, getRouteSupabase, unauthorized } from "../../../lib/supabase/route";
+import { GENERIC_CHAT_ERROR } from "../../../lib/chatProject";
 import { MAX_CHAT_CHARS, checkUsage } from "../../../lib/usageLimits";
 
 const openai = new OpenAI({
@@ -246,12 +247,8 @@ export async function POST(request: Request) {
 
   try {
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json(
-        {
-          error: "OPENAI_API_KEY is missing from .env.local",
-        },
-        { status: 500 }
-      );
+      console.error("BABA INTAKE: OPENAI_API_KEY is not configured.");
+      return NextResponse.json({ error: GENERIC_CHAT_ERROR }, { status: 500 });
     }
 
     const body = (await request.json()) as BabaRequest;
@@ -371,10 +368,7 @@ question.
 
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "BABA could not process the request.",
+        error: "BABA could not process the request.",
       },
       { status: 500 }
     );

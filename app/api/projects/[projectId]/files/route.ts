@@ -143,7 +143,6 @@ export async function GET(
       return NextResponse.json(
         {
           error: "Project files could not be loaded.",
-          details: filesError.message,
         },
         { status: 500 }
       );
@@ -192,7 +191,6 @@ export async function GET(
         {
           error:
             "Project File Intelligence could not be loaded.",
-          details: analysesError.message,
         },
         { status: 500 }
       );
@@ -248,7 +246,6 @@ export async function GET(
         {
           error:
             "Project Production Preflight could not be loaded.",
-          details: preflightsError.message,
         },
         { status: 500 }
       );
@@ -331,10 +328,7 @@ export async function GET(
 
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Project files could not be loaded.",
+        error: "Project files could not be loaded.",
       },
       { status: 500 }
     );
@@ -535,7 +529,6 @@ export async function POST(
       return NextResponse.json(
         {
           error: "File could not be uploaded.",
-          details: uploadError.message,
         },
         { status: 500 }
       );
@@ -598,7 +591,6 @@ export async function POST(
         {
           error:
             "File uploaded but its project record could not be created.",
-          details: recordError.message,
         },
         { status: 500 }
       );
@@ -648,10 +640,7 @@ export async function POST(
 
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Project file could not be uploaded.",
+        error: "Project file could not be uploaded.",
       },
       { status: 500 }
     );
