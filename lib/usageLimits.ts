@@ -40,20 +40,14 @@ export const USAGE_RULES: Record<UsageKind, Rule> = {
   upload: { perMinute: 10, perDay: 100, siteDay: 2000, label: "uploads" },
 };
 
-/* Upload rules. */
-export const UPLOAD_MAX_BYTES = 25 * 1024 * 1024; // 25 MB per file
-export const MAX_FILES_PER_PROJECT = 100;
-export const UPLOAD_ALLOWED_EXTENSIONS = [
-  // artwork and print files
-  "pdf", "ai", "eps", "svg", "psd", "indd", "tif", "tiff",
-  // images
-  "png", "jpg", "jpeg", "webp", "gif", "heic",
-  // references and bundles
-  "zip", "doc", "docx", "xls", "xlsx", "csv", "txt",
-];
-
-/* Longest chat message accepted (characters). */
-export const MAX_CHAT_CHARS = 2000;
+/* Upload and chat input rules live in lib/uploadRules.ts (shared with the tests). */
+export {
+  MAX_CHAT_CHARS,
+  MAX_FILES_PER_PROJECT,
+  UPLOAD_ALLOWED_EXTENSIONS,
+  UPLOAD_MAX_BYTES,
+  fileExtension,
+} from "./uploadRules";
 
 const SITE_ID = "00000000-0000-0000-0000-000000000000";
 
@@ -104,9 +98,4 @@ export async function checkUsage(userId: string, kind: UsageKind): Promise<NextR
   }
 
   return null;
-}
-
-export function fileExtension(name: string) {
-  const dot = name.lastIndexOf(".");
-  return dot >= 0 ? name.slice(dot + 1).toLowerCase() : "";
 }
