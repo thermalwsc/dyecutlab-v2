@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { getBrowserSupabase } from "../../lib/supabase/browser";
+import { intakeRows } from "../../lib/intakeMessages";
+import { uploadErrorMessage } from "../../lib/chatErrors";
 
 type Stage = "home" | "capture" | "conversation" | "project";
 
 type ClientData = {
-  id: number | null;
+  id: string | null;
   phone: string;
   email: string;
   marketingSms: boolean;
@@ -24,9 +26,9 @@ const REMEMBERED_CLIENT_KEY = "dyecutlab.rememberedClient";
 type QuestionStep = "ai" | "reference" | "complete";
 
 type ProjectData = {
-  id: number | null;
+  id: string | null;
   projectNumber: string | null;
-  clientId: number | null;
+  clientId: string | null;
   title: string;
   request: string;
   productType: string;
@@ -765,6 +767,9 @@ type ChatMessage = {
   kind?: "normal" | "summary";
 };
 
+const COMPLETE_MESSAGE =
+  "Perfect. I have enough to start your project brief. We can keep filling in dimensions, closure and production details as we develop it.";
+
 function Conversation({
   project,
   setProject,
@@ -964,6 +969,23 @@ function Conversation({
     }
   }
 
+  async function saveConversation(
+    projectId: string,
+    customerText: string,
+    babaText: string
+  ) {
+    const rows = intakeRows(customerText, babaText);
+    if (rows.length === 0) return;
+
+    const { error } = await getBrowserSupabase()
+      .from("project_messages")
+      .insert(rows.map((row) => ({ ...row, project_id: projectId })));
+
+    if (error) {
+      console.error("INTAKE MESSAGE SAVE ERROR:", error);
+    }
+  }
+
   async function callBaba(
     customerMessage: string,
     baseProject: ProjectData,
@@ -1065,6 +1087,16 @@ function Conversation({
       const saved = await ensureProject(next);
       const current = saved || next;
 
+      /* keep the conversation with the project so the team (and the project
+         chat) can read it; a failure here never interrupts the customer */
+      if (current.id) {
+        await saveConversation(
+          current.id,
+          cleanMessage,
+          baba.complete ? COMPLETE_MESSAGE : baba.nextQuestion
+        );
+      }
+
       const summary = buildSummary(current);
 
       if (summary) {
@@ -1095,8 +1127,7 @@ function Conversation({
           {
             id: createMessageId("baba-complete"),
             role: "baba",
-            text:
-              "Perfect. I have enough to start your project brief. We can keep filling in dimensions, closure and production details as we develop it.",
+            text: COMPLETE_MESSAGE,
           },
         ]);
         return;
@@ -1157,6 +1188,44 @@ function Conversation({
   ) {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    /* let the customer pick the same file again after a failure */
+    event.target.value = "";
+
+    if (!project.projectNumber) {
+      setProjectError("Please finish your first message before adding a picture.");
+      return;
+    }
+
+    const body = new FormData();
+    body.append("file", file);
+    body.append("category", "reference");
+
+    setProjectError(null);
+    setSaving(true);
+
+    let status: number | null = null;
+    let serverMessage: unknown = null;
+
+    try {
+      const response = await fetch(
+        `/api/projects/${encodeURIComponent(project.projectNumber)}/files`,
+        { method: "POST", body }
+      );
+
+      status = response.status;
+
+      if (!response.ok) {
+        serverMessage = (await response.json().catch(() => null))?.error;
+        throw new Error("Reference upload failed");
+      }
+    } catch (error) {
+      console.error("REFERENCE UPLOAD ERROR:", error);
+      setProjectError(uploadErrorMessage(status, serverMessage));
+      return;
+    } finally {
+      setSaving(false);
+    }
 
     const url = URL.createObjectURL(file);
     setReferenceImage(url);

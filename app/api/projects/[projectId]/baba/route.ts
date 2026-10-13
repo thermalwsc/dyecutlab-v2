@@ -344,6 +344,25 @@ export async function POST(
       );
     }
 
+    /* PDF production preflights. If they cannot be read, BABA still answers,
+       it just cannot talk about them. */
+    const {
+      data: preflightRows,
+      error: preflightRowsError,
+    } = await supabase
+      .from("project_file_preflights")
+      .select(
+        "file_id, status, page_count, consistent_page_size, observations, concerns, not_verified"
+      )
+      .eq("project_id", project.id);
+
+    if (preflightRowsError) {
+      console.error(
+        "BABA PREFLIGHT LOAD ERROR:",
+        preflightRowsError
+      );
+    }
+
     /*
     |--------------------------------------------------------------------------
     | JOIN FILES + ANALYSIS
@@ -393,6 +412,12 @@ export async function POST(
               file.created_at,
 
             analysis,
+
+            preflight:
+              (preflightRows || []).find(
+                (item) =>
+                  item.file_id === file.id
+              ) || null,
           };
         }
       );
@@ -622,6 +647,28 @@ Do not offer capabilities that do not exist.
 If an analysis already exists, you may explain it.
 
 If no analysis exists, say that the file has not been analyzed yet.
+
+PDF PRODUCTION PREFLIGHT:
+
+PDF files are not analyzed visually. Instead each PDF gets a stored production preflight, found in the file's "preflight" field: page count, page size, observations, concerns, what could not be verified and a recommended next step.
+
+If a PDF has a preflight, explain it in plain words, for example the page count, the page size, and that trim and bleed could not be confirmed.
+
+Never say a PDF "has not been analyzed" when it has a preflight. Never offer to "run an analysis now". If a PDF has no preflight yet, say its file check is not finished and the customer can use the re-run button on the file card.
+
+A preflight only checks the PDF's structure. It does not approve artwork for production.
+
+GREETINGS AND SMALL TALK:
+
+If the customer only says hello or something similar ("hi", "hello", "thanks"), answer in one short friendly sentence and ask what they would like to do with the project. Do NOT summarize files, flags or missing details unless they ask.
+
+THINGS YOU CAN OFFER:
+
+The only things you may offer to do are: answer questions, explain stored file results, and update the supported project brief fields. Never offer to run a preflight or analysis, request or re-request artwork, contact anyone, or do anything else. If the customer needs something else, say the DCL team will follow up.
+
+Never offer to run a "deeper" or "full" preflight yourself, you cannot. When the preflight lists things that could not be verified, say the DCL team will check them before production. The only action you may mention is the customer's own re-run button on the file card.
+
+Do not repeat the file name, page size and every flag in one long sentence. Give the main point in 2 or 3 short sentences, then ask at most one question about the project.
 
 ARTWORK STATUS:
 

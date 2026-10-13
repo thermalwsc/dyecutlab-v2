@@ -13,6 +13,7 @@ import { Footer, Header } from "../../updates/SiteChrome";
 import { projectStatusLabel } from "../../admin/statuses";
 import { getBrowserSupabase } from "../../../lib/supabase/browser";
 import { JOURNEY_STEPS, journeyStepIndex } from "../../../lib/projectJourney";
+import { chatErrorMessage } from "../../../lib/chatErrors";
 
 /* Tracker steps come from the shared customer journey (lib/projectJourney.ts),
    so the project page and the dashboard always agree. */
@@ -41,6 +42,7 @@ type Project = {
   box_dimensions: string | null;
   material: string | null;
   finish: string | null;
+  updated_at?: string | null;
 };
 
 type Message = {
@@ -234,6 +236,21 @@ export default function ProjectPage() {
   const fileInputRef =
     useRef<HTMLInputElement | null>(null);
 
+  /* which part of the workspace is showing: on a phone the tabs switch
+     between them, on a wide screen the chat is always beside the project */
+  const [tab, setTab] = useState<
+    "overview" | "files" | "chat"
+  >("overview");
+
+  const [hasEarlier, setHasEarlier] = useState(false);
+
+  const [loadingEarlier, setLoadingEarlier] =
+    useState(false);
+
+  /* set while older messages are added at the top, so the view
+     does not jump to the bottom */
+  const keepScrollRef = useRef(false);
+
   /*
   |--------------------------------------------------------------------------
   | LOAD PROJECT
@@ -301,10 +318,66 @@ export default function ProjectPage() {
           created_at: item.created_at,
         }))
       );
+
+      setHasEarlier(data.hasMore === true);
     } catch (error) {
       console.error("MESSAGE LOAD ERROR:", error);
     } finally {
       setMessagesLoading(false);
+    }
+  }
+
+  async function loadEarlierMessages() {
+    const oldest = messages.find(
+      (item) => item.created_at
+    )?.created_at;
+
+    if (!oldest || loadingEarlier) {
+      return;
+    }
+
+    try {
+      setLoadingEarlier(true);
+
+      const response = await fetch(
+        `/api/projects/${projectId}/messages?before=${encodeURIComponent(
+          oldest
+        )}`,
+        {
+          cache: "no-store",
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error("EARLIER MESSAGES ERROR:", data);
+        return;
+      }
+
+      const older: StoredMessage[] = Array.isArray(
+        data.messages
+      )
+        ? data.messages
+        : [];
+
+      keepScrollRef.current = true;
+
+      setMessages((current) => [
+        ...older.map((item) => ({
+          id: item.id,
+          role: item.role,
+          text: item.message,
+          created_at: item.created_at,
+        })),
+        ...current,
+      ]);
+
+      setHasEarlier(data.hasMore === true);
+    } catch (error) {
+      console.error("EARLIER MESSAGES ERROR:", error);
+    } finally {
+      setLoadingEarlier(false);
     }
   }
 
@@ -407,6 +480,11 @@ export default function ProjectPage() {
 
   useEffect(() => {
     if (messagesLoading) {
+      return;
+    }
+
+    if (keepScrollRef.current) {
+      keepScrollRef.current = false;
       return;
     }
 
@@ -661,6 +739,10 @@ export default function ProjectPage() {
       },
     ]);
 
+    /* null = the request never got an answer (network down) */
+    let failedStatus: number | null = null;
+    let failedMessage: unknown = null;
+
     try {
       const response = await fetch(
         `/api/projects/${projectId}/baba`,
@@ -677,13 +759,13 @@ export default function ProjectPage() {
         }
       );
 
-      const data = await response.json();
+      failedStatus = response.status;
 
-      if (!response.ok) {
-        throw new Error(
-          data?.error ||
-            "BABA could not update the project."
-        );
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data) {
+        failedMessage = data?.error;
+        throw new Error("BABA request failed");
       }
 
       if (data.project) {
@@ -704,12 +786,17 @@ export default function ProjectPage() {
     } catch (error) {
       console.error("BABA ERROR:", error);
 
+      /* give the customer their words back so nothing is lost */
+      setInput((current) => current || cleanMessage);
+
       setMessages((current) => [
         ...current,
         {
           role: "baba",
-          text:
-            "I couldn't save that change. Please try again.",
+          text: chatErrorMessage(
+            failedStatus,
+            failedMessage
+          ),
         },
       ]);
     } finally {
@@ -854,6 +941,24 @@ export default function ProjectPage() {
   const briefComplete =
     completedFields === 5;
 
+  /* a picture for the header: the newest uploaded image, else the DCL box */
+  const heroImage =
+    files.find(
+      (file) =>
+        file.url &&
+        file.file_type?.startsWith("image/")
+    )?.url || "/dcl-box.png";
+
+  const updatedLabel = project.updated_at
+    ? new Date(
+        project.updated_at
+      ).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null;
+
   return (
     <>
       <main className={`page ${brandFont.className}`}>
@@ -876,11 +981,6 @@ export default function ProjectPage() {
             <div className="project-number">
               {project.project_number}
             </div>
-
-            <div className="project-status">
-              <span className="status-dot" />
-              {status}
-            </div>
           </div>
 
           {teamInfo ? (
@@ -899,46 +999,96 @@ export default function ProjectPage() {
           {/* HERO */}
 
           <section className="hero">
-            <div className="eyebrow">
-              Project workspace
+            <div className="hero-text">
+              <h1>
+                {project.title ||
+                  "Untitled project"}
+              </h1>
+
+              <div className="hero-status">
+                <span className="status-dot" />
+                {status}
+              </div>
+
+              <ul className="hero-meta-row">
+                <li>
+                  <span>ID</span>
+                  {project.project_number}
+                </li>
+                {updatedLabel && (
+                  <li>
+                    <span>Updated</span>
+                    {updatedLabel}
+                  </li>
+                )}
+                <li>
+                  <span>Units</span>
+                  {project.units ?? "—"}
+                </li>
+              </ul>
+
+              {teamInfo && (
+                <p className="team-meta">
+                  <strong>Customer:</strong> {teamInfo.owner}
+                  <span>·</span>
+                  <strong>Factory:</strong> {teamInfo.factory}
+                </p>
+              )}
             </div>
 
-            <h1>
-              {project.title ||
-                "Untitled project"}
-            </h1>
-
-            <ul className="hero-specs">
-              <li>
-                <span>Units</span>
-                {project.units ?? "—"}
-              </li>
-              <li>
-                <span>Flavors</span>
-                {project.flavor_count ?? "—"}
-              </li>
-              <li>
-                <span>Size</span>
-                {project.pouch_size || project.box_dimensions || project.size || "—"}
-              </li>
-              <li>
-                <span>Material</span>
-                {project.material || "—"}
-              </li>
-              <li>
-                <span>Finish</span>
-                {project.finish || "—"}
-              </li>
-            </ul>
-
-            {teamInfo && (
-              <p className="team-meta">
-                <strong>Customer:</strong> {teamInfo.owner}
-                <span>·</span>
-                <strong>Factory:</strong> {teamInfo.factory}
-              </p>
-            )}
+            <div className="hero-image">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={heroImage}
+                alt=""
+              />
+            </div>
           </section>
+
+          {/* TABS */}
+
+          <nav
+            className="tabs"
+            aria-label="Project sections"
+          >
+            {(
+              [
+                ["overview", "Overview"],
+                ["files", "Files"],
+                ["chat", "Chat"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={
+                  tab === value
+                    ? `tab tab-${value} tab-active`
+                    : `tab tab-${value}`
+                }
+                aria-current={
+                  tab === value
+                    ? "page"
+                    : undefined
+                }
+                onClick={() => setTab(value)}
+              >
+                {label}
+                {value === "files" &&
+                  files.length > 0 && (
+                    <span className="tab-count">
+                      {files.length}
+                    </span>
+                  )}
+              </button>
+            ))}
+          </nav>
+
+          <div
+            className="workspace"
+            data-tab={tab}
+          >
+          <div className="main-col">
 
           {/* PROJECT STATUS */}
 
@@ -1191,8 +1341,11 @@ export default function ProjectPage() {
               )}
           </section>
 
+          </div>
+
           {/* BABA */}
 
+          <aside className="chat-col">
           <section
             className={
               briefComplete
@@ -1227,6 +1380,19 @@ export default function ProjectPage() {
                 <div className="history-loading">
                   LOADING CONVERSATION...
                 </div>
+              )}
+
+              {!messagesLoading && hasEarlier && (
+                <button
+                  type="button"
+                  className="analyze-button"
+                  onClick={loadEarlierMessages}
+                  disabled={loadingEarlier}
+                >
+                  {loadingEarlier
+                    ? "LOADING..."
+                    : "SHOW EARLIER MESSAGES"}
+                </button>
               )}
 
               {!messagesLoading &&
@@ -1299,14 +1465,6 @@ export default function ProjectPage() {
             </div>
           </section>
 
-          <div className="input-spacer" />
-        </div>
-
-        <div className="site-footer">
-          <Footer />
-        </div>
-      </main>
-
       {/* MESSAGE BABA */}
 
       <div className="composer-shell">
@@ -1341,6 +1499,27 @@ export default function ProjectPage() {
           </div>
         </div>
       </div>
+          </aside>
+          </div>
+        </div>
+
+        <div className="site-footer">
+          <Footer />
+        </div>
+      </main>
+
+      {tab !== "chat" && (
+        <button
+          type="button"
+          className="ask-fab"
+          onClick={() => {
+            setTab("chat");
+            window.scrollTo({ top: 0 });
+          }}
+        >
+          Ask BABA
+        </button>
+      )}
 
       <style jsx>{styles}</style>
     </>
@@ -2856,42 +3035,45 @@ const styles = `
   }
 
   .message {
-    font-size: 18px;
-    line-height: 1.45;
+    font-size: 17px;
+    line-height: 1.5;
     overflow-wrap: break-word;
+    white-space: pre-wrap;
   }
 
   .baba-message {
     width: auto;
     max-width: min(
-      720px,
+      680px,
       calc(100% - 54px)
     );
-    padding: 20px 24px;
-    border: 1px solid #dedee2;
+    padding: 16px 20px;
+    border: 2px solid #000000;
     border-radius:
-      24px 24px 24px 5px;
-    background: #ffffff;
+      22px 22px 22px 4px;
+    background: #f1f8e0;
+    color: #111111;
   }
 
   .user-message {
     width: auto;
     max-width: 72%;
-    padding: 18px 23px;
+    padding: 16px 20px;
     border-radius:
-      24px 24px 5px 24px;
+      22px 22px 4px 22px;
     background: #000000;
     color: #ffffff;
+    font-weight: 500;
   }
 
   .thinking {
     min-width: 76px;
     height: 48px;
     padding: 0 20px;
-    border: 1px solid #dedee2;
+    border: 2px solid #000000;
     border-radius:
-      22px 22px 22px 5px;
-    background: #ffffff;
+      22px 22px 22px 4px;
+    background: #f1f8e0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2977,12 +3159,13 @@ const styles = `
     align-items: center;
     gap: 12px;
     padding: 8px 9px 8px 24px;
-    border: 1px solid #d9d9de;
+    border: 2px solid #000000;
     border-radius: 38px;
     background: #ffffff;
-    box-shadow:
-      0 6px 28px
-      rgba(0, 0, 0, 0.04);
+  }
+
+  .composer:focus-within {
+    box-shadow: 3px 3px 0 #c2f23a;
   }
 
   .composer input {
@@ -3004,17 +3187,18 @@ const styles = `
     width: 55px;
     height: 55px;
     flex: 0 0 55px;
-    border: 0;
+    border: 2px solid #000000;
     border-radius: 50%;
-    background: #000000;
-    color: #3f6f00;
+    background: #c2f23a;
+    color: #000000;
     font-size: 27px;
     line-height: 1;
     cursor: pointer;
   }
 
   .send-button:disabled {
-    background: #d2d2d2;
+    background: #ececec;
+    border-color: #d2d2d2;
     color: #ffffff;
     cursor: default;
   }
@@ -3307,22 +3491,22 @@ const styles = `
 
     .message {
       font-size: 16px;
-      line-height: 1.42;
+      line-height: 1.45;
     }
 
     .baba-message {
       max-width:
         calc(100% - 44px);
-      padding: 17px 18px;
+      padding: 14px 16px;
       border-radius:
-        20px 20px 20px 5px;
+        20px 20px 20px 4px;
     }
 
     .user-message {
       max-width: 82%;
-      padding: 16px 18px;
+      padding: 14px 16px;
       border-radius:
-        20px 20px 5px 20px;
+        20px 20px 4px 20px;
     }
 
     .input-spacer {
@@ -3410,6 +3594,426 @@ const styles = `
 
     .composer {
       padding-left: 15px;
+    }
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | WORKSPACE LAYOUT (hero, tabs, project beside chat)
+  |--------------------------------------------------------------------------
+  | Kept last so it wins over the older single-column styles above.
+  */
+
+  .page {
+    background: #fafafa;
+    padding-bottom: 24px;
+  }
+
+  .content {
+    width: min(1280px, calc(100% - 32px));
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .topbar {
+    height: 64px;
+    margin-top: 8px;
+  }
+
+  .ask-fab {
+    position: fixed;
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    z-index: 90;
+    height: 48px;
+    padding: 0 22px;
+    border: 2px solid #000000;
+    border-radius: 999px;
+    background: #c2f23a;
+    color: #000000;
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 3px 3px 0 #000000;
+  }
+
+  @media (min-width: 1024px) {
+    .ask-fab {
+      display: none;
+    }
+  }
+
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 20px;
+    padding: 28px 0 18px;
+    border-bottom: 0;
+  }
+
+  .hero h1 {
+    margin: 0 0 12px;
+    font-size: clamp(32px, 5vw, 56px);
+    line-height: 1.02;
+    letter-spacing: -0.035em;
+  }
+
+  .hero-status {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #3f6f00;
+  }
+
+  .hero-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 26px;
+    margin: 18px 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .hero-meta-row span {
+    display: block;
+    color: #6b6b73;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .hero-image {
+    width: 150px;
+    height: 110px;
+    border-radius: 20px;
+    background: #f1f1f3;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .hero-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 26px;
+    border-bottom: 1px solid #e4e4e7;
+    margin-bottom: 20px;
+    overflow-x: auto;
+  }
+
+  .tab {
+    border: 0;
+    background: transparent;
+    padding: 14px 2px 13px;
+    border-bottom: 3px solid transparent;
+    color: #52525b;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .tab-active {
+    color: #000000;
+    border-bottom-color: #c2f23a;
+  }
+
+  .tab-count {
+    margin-left: 7px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #ececef;
+    font-size: 12px;
+  }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+  }
+
+  .main-col {
+    min-width: 0;
+  }
+
+  .main-col .section {
+    margin-bottom: 18px;
+    padding: 24px;
+    border: 1px solid #e8e8ec;
+    border-radius: 24px;
+    background: #ffffff;
+  }
+
+  .main-col .timeline {
+    margin-top: 26px;
+  }
+
+  .main-col .current-card {
+    margin-top: 28px;
+    padding: 20px 22px;
+    border-radius: 18px;
+  }
+
+  .main-col .brief-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 22px;
+  }
+
+  .main-col .brief-item {
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: #f6f6f7;
+  }
+
+  .main-col .brief-value {
+    margin-top: 6px;
+    font-size: 17px;
+    font-weight: 700;
+  }
+
+  .chat-col {
+    min-width: 0;
+    padding-bottom: 120px;
+  }
+
+  .chat-col .baba-section {
+    margin: 0;
+    padding: 24px 18px 28px;
+    border-top: 0;
+    background: transparent;
+  }
+
+  .workspace[data-tab="files"] .status-section,
+  .workspace[data-tab="files"] .brief-section {
+    display: none;
+  }
+
+  /* phone and tablet: the tabs switch between the project and the chat */
+  @media (max-width: 1023px) {
+    .workspace[data-tab="chat"] .main-col,
+    .workspace:not([data-tab="chat"]) .chat-col {
+      display: none;
+    }
+  }
+
+  /* wide screens: the chat sits beside the project, always visible */
+  @media (min-width: 1024px) {
+    .content {
+      width: min(1280px, calc(100% - 64px));
+    }
+
+    .page {
+      padding-bottom: 40px;
+    }
+
+    .tab-chat {
+      display: none;
+    }
+
+    .workspace {
+      grid-template-columns: minmax(0, 1fr) 420px;
+      gap: 24px;
+    }
+
+    .main-col .brief-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .hero-image {
+      width: 230px;
+      height: 150px;
+    }
+
+    .chat-col {
+      position: sticky;
+      top: 16px;
+      height: calc(100vh - 32px);
+      display: flex;
+      flex-direction: column;
+      padding-bottom: 0;
+      border: 2px solid #000000;
+      border-radius: 28px;
+      background: #ffffff;
+      overflow: hidden;
+    }
+
+    .chat-col .baba-section {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    .chat-col .composer-shell {
+      position: static;
+      padding: 12px 14px;
+      background: #ffffff;
+      border-top: 1px solid #ededed;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    .chat-col .composer {
+      height: 56px;
+    }
+
+    .chat-col .send-button {
+      width: 42px;
+      height: 42px;
+      flex-basis: 42px;
+      font-size: 21px;
+    }
+
+    .chat-col .composer input {
+      font-size: 16px;
+    }
+
+    .chat-col .message {
+      font-size: 16px;
+    }
+
+    .chat-col .user-message {
+      max-width: 85%;
+    }
+  }
+
+  /* very wide screens: a roomier chat */
+  @media (min-width: 1440px) {
+    .workspace {
+      grid-template-columns: minmax(0, 1fr) 480px;
+    }
+  }
+
+  /* tablet: project and chat switch with the tabs, centred and not too wide */
+  @media (min-width: 701px) and (max-width: 1023px) {
+    .content {
+      width: min(860px, calc(100% - 48px));
+    }
+
+    .hero {
+      padding: 32px 0 20px;
+    }
+
+    .hero-image {
+      width: 190px;
+      height: 130px;
+    }
+
+    .main-col .brief-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .chat-col {
+      max-width: 720px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .chat-col .composer-shell {
+      padding-left: max(24px, calc((100vw - 720px) / 2));
+      padding-right: max(24px, calc((100vw - 720px) / 2));
+    }
+  }
+
+  /* phone */
+  @media (max-width: 700px) {
+    .page {
+      overflow-x: clip;
+    }
+
+    .content {
+      width: calc(100% - 28px);
+    }
+
+    .hero {
+      gap: 14px;
+      padding: 20px 0 14px;
+    }
+
+    .hero h1 {
+      font-size: 30px;
+    }
+
+    .hero-image {
+      width: 84px;
+      height: 84px;
+      border-radius: 16px;
+    }
+
+    .hero-meta-row {
+      margin-top: 12px;
+      gap: 6px 18px;
+      font-size: 14px;
+    }
+
+    .tabs {
+      gap: 0;
+    }
+
+    .tab {
+      flex: 1;
+      min-height: 46px;
+      padding: 12px 6px;
+      text-align: center;
+    }
+
+    .main-col .section {
+      margin-bottom: 14px;
+      padding: 18px 16px;
+      border-radius: 20px;
+    }
+
+    .main-col .brief-grid {
+      gap: 10px;
+    }
+
+    .main-col .brief-item {
+      padding: 12px 14px;
+    }
+
+    .main-col .brief-value {
+      font-size: 15px;
+    }
+
+    .main-col .current-card strong {
+      font-size: 17px;
+    }
+
+    .chat-col .baba-section {
+      padding: 20px 4px 24px;
+    }
+
+    .chat-col .composer-shell {
+      padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    }
+  }
+
+  /* small phones */
+  @media (max-width: 380px) {
+    .hero h1 {
+      font-size: 26px;
+    }
+
+    .hero-image {
+      width: 68px;
+      height: 68px;
+    }
+
+    .main-col .brief-grid {
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 `;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { forbidden, getRouteSupabase, unauthorized } from "../../../../../lib/supabase/route";
+import { parsePageRequest, toPage } from "../../../../../lib/chatPaging";
 
 
 /*
@@ -83,14 +84,27 @@ export async function GET(
     |
     */
 
-    const { data: messages, error: messagesError } =
-      await supabase
-        .from("project_messages")
-        .select("id, role, message, created_at")
-        .eq("project_id", project.id)
+    /* Newest first, one more than asked for so we know whether earlier
+       messages exist; the page asks for them with ?before=<oldest shown>. */
+    const { limit, before } = parsePageRequest(
+      request.nextUrl.searchParams
+    );
+
+    let query = supabase
+      .from("project_messages")
+      .select("id, role, message, created_at")
+      .eq("project_id", project.id);
+
+    if (before) {
+      query = query.lt("created_at", before);
+    }
+
+    const { data: rows, error: messagesError } =
+      await query
         .order("created_at", {
-          ascending: true,
-        });
+          ascending: false,
+        })
+        .limit(limit + 1);
 
     if (messagesError) {
       console.error(
@@ -113,10 +127,13 @@ export async function GET(
     |--------------------------------------------------------------------------
     */
 
+    const { messages, hasMore } = toPage(rows, limit);
+
     return NextResponse.json({
       success: true,
       projectId: project.project_number,
-      messages: messages || [],
+      messages,
+      hasMore,
     });
   } catch (error) {
     console.error(
