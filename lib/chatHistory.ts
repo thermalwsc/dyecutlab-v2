@@ -21,6 +21,40 @@ function shorten(text: string, max: number) {
   return flat.length <= max ? flat : `${flat.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
 }
 
+/* The start-your-project chat keeps its messages in the browser. This turns them
+   into the small list sent with each request: the summary cards are left out,
+   and the customer's newest line is dropped from the end because it travels
+   separately as "message". */
+export type ClientMessage = { role: "customer" | "baba"; text: string; kind?: string };
+export type ClientTurn = { role: "customer" | "baba"; text: string };
+
+export function toRequestHistory(messages: ClientMessage[], newest: string): ClientTurn[] {
+  const kept = messages
+    .filter((item) => item.kind !== "summary" && typeof item.text === "string")
+    .map((item) => ({ role: item.role, text: item.text }));
+
+  const last = kept[kept.length - 1];
+  if (last && last.role === "customer" && last.text.trim() === newest.trim()) kept.pop();
+
+  return kept.slice(-HISTORY_MAX_MESSAGES);
+}
+
+/* Server side: whatever the browser sent is untrusted, so it is checked and
+   shortened exactly like saved messages. Returns nothing usable as []. */
+export function parseClientHistory(raw: unknown): HistoryTurn[] {
+  if (!Array.isArray(raw)) return [];
+
+  const rows: StoredMessage[] = raw.slice(-HISTORY_MAX_MESSAGES * 2).map((item) => {
+    const entry = (item ?? {}) as { role?: unknown; text?: unknown };
+    return {
+      role: entry.role === "customer" ? "user" : entry.role === "baba" ? "baba" : null,
+      message: entry.text,
+    };
+  });
+
+  return buildHistory(rows);
+}
+
 /* rows: saved messages, OLDEST FIRST, as stored (role "user" or "baba").
    Returns the newest ones that fit the limits, still oldest first, so the AI
    reads them in order. Rows that are empty or have an unknown role are skipped. */

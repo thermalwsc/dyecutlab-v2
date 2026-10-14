@@ -996,6 +996,11 @@ export default function ProjectPage() {
         </header>
 
         <div className="content">
+          <div
+            className="workspace"
+            data-tab={tab}
+          >
+          <div className="left-col">
           {/* HERO */}
 
           <section className="hero">
@@ -1084,10 +1089,6 @@ export default function ProjectPage() {
             ))}
           </nav>
 
-          <div
-            className="workspace"
-            data-tab={tab}
-          >
           <div className="main-col">
 
           {/* PROJECT STATUS */}
@@ -1341,6 +1342,7 @@ export default function ProjectPage() {
               )}
           </section>
 
+          </div>
           </div>
 
           {/* BABA */}
@@ -3745,6 +3747,7 @@ const styles = `
     align-items: start;
   }
 
+  .left-col,
   .main-col {
     min-width: 0;
   }
@@ -3841,7 +3844,10 @@ const styles = `
     .chat-col {
       position: sticky;
       top: 16px;
-      height: calc(100vh - 32px);
+      /* the site header and project bar sit above it on load (about 148px),
+         so it is sized to leave the message box in view without scrolling */
+      height: calc(100vh - 168px);
+      min-height: 460px;
       display: flex;
       flex-direction: column;
       padding-bottom: 0;

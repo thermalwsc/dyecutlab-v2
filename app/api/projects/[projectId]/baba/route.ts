@@ -4,6 +4,7 @@ import { forbidden, getRouteSupabase, unauthorized } from "../../../../../lib/su
 import { CHAT_EDITABLE_FIELDS, cleanChatUpdates, rejectedNote } from "../../../../../lib/chatUpdates";
 import { pickChatProject, projectForModel } from "../../../../../lib/chatProject";
 import { HISTORY_MAX_MESSAGES, buildHistory } from "../../../../../lib/chatHistory";
+import { calculateProduction, productionRuleText } from "../../../../../lib/production";
 import { MAX_CHAT_CHARS, checkUsage } from "../../../../../lib/usageLimits";
 import OpenAI from "openai";
 
@@ -32,45 +33,8 @@ function getOpenAI() {
 const editableFields = CHAT_EDITABLE_FIELDS;
 
 
-/*
-|--------------------------------------------------------------------------
-| PRODUCTION CALCULATION
-|--------------------------------------------------------------------------
-|
-| 1 unit = 128 finished packaging pieces.
-|
-| Production is rounded UP to the nearest 600 pieces.
-|
-*/
-
-function calculateQuantity(
-  units: number
-) {
-  const rawQuantity =
-    units * 128;
-
-  return (
-    Math.ceil(
-      rawQuantity / 600
-    ) * 600
-  );
-}
-
-function calculateFlavorSplit(
-  quantity: number,
-  flavorCount: number
-) {
-  if (
-    !flavorCount ||
-    flavorCount <= 0
-  ) {
-    return null;
-  }
-
-  return Math.ceil(
-    quantity / flavorCount
-  );
-}
+/* Quantity and per-flavor split come from lib/production.ts, the same rule the
+   start-your-project chat uses (1 unit = 128 pieces, rounded up to the next 100). */
 
 /*
 |--------------------------------------------------------------------------
@@ -782,11 +746,13 @@ flavor_split
 
 Never put quantity or flavor_split in changed_fields.
 
-Never calculate quantity.
+The server calculates and saves them automatically after units or flavor_count change.
 
-Never calculate flavor_split.
+PRODUCTION QUANTITY RULE:
 
-The server handles those automatically.
+${productionRuleText()}
+
+You may tell the customer how many pieces an order would come to, using this rule exactly, for example when they ask "how many pieces if I order 10 units?". Say it is the production quantity, and that you can update the project if they want. Do not do any other quantity maths.
 
 QUESTION-ONLY MESSAGES:
 
@@ -1123,22 +1089,21 @@ Return a short natural reply that directly addresses the customer's newest messa
               project.flavor_count
             );
 
-      const quantity =
-        calculateQuantity(
-          finalUnits
-        );
-
-      const flavorSplit =
-        calculateFlavorSplit(
-          quantity,
+      const production =
+        calculateProduction(
+          finalUnits,
           finalFlavorCount
         );
 
       updates.quantity =
-        quantity;
+        production.total > 0
+          ? production.total
+          : null;
 
       updates.flavor_split =
-        flavorSplit;
+        production.perFlavor > 0
+          ? production.perFlavor
+          : null;
     }
 
     /*

@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { getBrowserSupabase } from "../../lib/supabase/browser";
-import { intakeRows } from "../../lib/intakeMessages";
+import { intakeRows, savedToShown } from "../../lib/intakeMessages";
+import { toRequestHistory } from "../../lib/chatHistory";
+import { PIECES_PER_UNIT, calculateProduction, roundOrderQuantity } from "../../lib/production";
 import { uploadErrorMessage } from "../../lib/chatErrors";
 
 type Stage = "home" | "capture" | "conversation" | "project";
@@ -101,30 +103,6 @@ function inferFlavorCountFromText(text: string) {
   return 0;
 }
 
-function adjustQuantityForFlavors(
-  rawPieces: number,
-  flavorCount: number
-) {
-  const safeFlavorCount = Math.max(1, Math.floor(flavorCount));
-
-  // Never round below the customer's requested piece equivalent.
-  // Each flavor must land on a 100-piece production increment,
-  // so the total order increment is flavorCount × 100.
-  const productionIncrement = safeFlavorCount * 100;
-  const total =
-    Math.ceil(rawPieces / productionIncrement) * productionIncrement;
-  const perFlavor = total / safeFlavorCount;
-
-  return {
-    total,
-    perFlavor,
-  };
-}
-
-function roundOrderQuantity(quantity: number) {
-  return Math.ceil(quantity / 100) * 100;
-}
-
 function inferQuantityFromText(text: string) {
   const value = text.toLowerCase().replace(/,/g, "");
 
@@ -135,7 +113,7 @@ function inferQuantityFromText(text: string) {
     let units = Number(unitMatch[1]);
     if (!Number.isFinite(units) || units <= 0) return null;
     if (unitMatch[2] === "k" || unitMatch[2] === "thousand") units *= 1000;
-    return roundOrderQuantity(Math.ceil(units * 128));
+    return calculateProduction(units).total;
   }
 
   // Explicit piece counts are literal production pieces.
@@ -206,11 +184,11 @@ function inferUnitConversion(text: string) {
   if (!Number.isFinite(units) || units <= 0) return null;
   if (match[2] === "k" || match[2] === "thousand") units *= 1000;
 
-  const rawPieces = Math.ceil(units * 128);
+  const production = calculateProduction(units);
   return {
     units,
-    rawPieces,
-    orderPieces: roundOrderQuantity(rawPieces),
+    rawPieces: production.rawPieces,
+    orderPieces: production.total,
   };
 }
 
@@ -842,36 +820,6 @@ function Conversation({
     return "general";
   }
 
-  function calculateProduction(
-    units: number | null,
-    flavorCount: number
-  ) {
-    if (!units || units <= 0) {
-      return {
-        rawPieces: 0,
-        total: 0,
-        perFlavor: 0,
-      };
-    }
-
-    const rawPieces = Math.ceil(units * 128);
-
-    if (flavorCount > 0) {
-      const adjusted = adjustQuantityForFlavors(rawPieces, flavorCount);
-      return {
-        rawPieces,
-        total: adjusted.total,
-        perFlavor: adjusted.perFlavor,
-      };
-    }
-
-    return {
-      rawPieces,
-      total: roundOrderQuantity(rawPieces),
-      perFlavor: 0,
-    };
-  }
-
   function buildSummary(current: ProjectData) {
     const lines: string[] = [];
 
@@ -1017,6 +965,7 @@ function Conversation({
         },
         body: JSON.stringify({
           message: cleanMessage,
+          history: toRequestHistory(messages, cleanMessage),
           project: {
             packaging: baseProject.productType || null,
             units: baseProject.units,
@@ -1161,11 +1110,32 @@ function Conversation({
     }
   }
 
+  async function openConversation() {
+    /* Coming back from the project view the project already exists: show the
+       saved conversation instead of sending the opening message again. */
+    if (project.id && project.projectNumber) {
+      try {
+        const response = await fetch(
+          `/api/projects/${encodeURIComponent(project.projectNumber)}/messages`,
+          { cache: "no-store" }
+        );
+        const data = await response.json().catch(() => null);
+        const shown = savedToShown(data?.messages);
+        if (response.ok && shown.length > 0) setMessages(shown);
+      } catch (error) {
+        console.error("INTAKE HISTORY LOAD ERROR:", error);
+      }
+      return;
+    }
+
+    await callBaba(project.request, project, false);
+  }
+
   useEffect(() => {
     if (initializedRef.current || !project.request) return;
     initializedRef.current = true;
 
-    callBaba(project.request, project, false);
+    void openConversation();
     // Run only once for the opening customer message.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1262,7 +1232,7 @@ function Conversation({
     project.units && project.units > 0
       ? {
           units: project.units,
-          rawPieces: Math.ceil(project.units * 128),
+          rawPieces: calculateProduction(project.units).rawPieces,
           orderPieces: project.quantity,
         }
       : null;
@@ -1312,7 +1282,7 @@ function Conversation({
 
                   {unitConversion && (
                     <p className="mt-3 text-[12px] text-lime-500">
-                      {unitConversion.units.toLocaleString()} UNITS × 128 PCS ={" "}
+                      {unitConversion.units.toLocaleString()} UNITS × {PIECES_PER_UNIT} PCS ={" "}
                       {unitConversion.rawPieces.toLocaleString()} PCS
                       {unitConversion.orderPieces
                         ? ` · PRODUCTION ${unitConversion.orderPieces.toLocaleString()} PCS`

@@ -14,6 +14,24 @@ function clean(text: string | null | undefined) {
   return (text ?? "").trim().slice(0, MAX_CHAT_CHARS);
 }
 
+export type ShownMessage = { id: string; role: "customer" | "baba"; text: string };
+
+/* Saved rows (oldest first) back into what the chat screen shows, for when the
+   customer comes back to a project that already exists. Rows with an unknown
+   role or no text are skipped. */
+export function savedToShown(rows: Array<{ id?: unknown; role?: unknown; message?: unknown }> | null | undefined): ShownMessage[] {
+  if (!Array.isArray(rows)) return [];
+
+  const shown: ShownMessage[] = [];
+  rows.forEach((row, index) => {
+    if (!row || typeof row.message !== "string" || !row.message.trim()) return;
+    const role = row.role === "user" ? "customer" : row.role === "baba" ? "baba" : null;
+    if (!role) return;
+    shown.push({ id: typeof row.id === "string" ? row.id : `saved-${index}`, role, text: row.message });
+  });
+  return shown;
+}
+
 /* The customer's line first, then BABA's reply one millisecond later so the two
    always sort in the order they were spoken. Empty lines are left out. */
 export function intakeRows(customerText: string, babaText?: string | null, now: Date = new Date()): IntakeRow[] {
