@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { ArrowIcon } from "../updates/Icons";
 import { START_PROJECT_HREF } from "../../lib/contact";
-import { JOURNEY_STEPS, REQUEST_STEPS, journeyStepIndex, nextStepFor, requestInfoFor } from "../../lib/projectJourney";
-import { projectStatusLabel } from "../admin/statuses";
+import { JOURNEY_STEPS, REQUEST_STEPS, customerStatusLabel, journeyStepIndex, nextStepFor, requestInfoFor } from "../../lib/projectJourney";
 export type ProjectRow = {
   id: string;
   project_number: string;
@@ -89,7 +88,7 @@ export function ProjectCard({ project }: { project: ProjectRow }) {
           <p className="mt-1 text-[13px] font-medium text-zinc-600">{projectMeta(project)}</p>
         </div>
         <span className="shrink-0 rounded-full border-2 border-black bg-white px-3 py-1 text-[12px] font-extrabold">
-          {projectStatusLabel(project.status || "development")}
+          {customerStatusLabel(project.status || "development")}
         </span>
       </div>
 

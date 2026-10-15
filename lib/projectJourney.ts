@@ -22,6 +22,30 @@ export function journeyStepIndex(status: string | null | undefined): number {
   return index === -1 ? 0 : index;
 }
 
+/* The stage names a customer sees. The team and the factory keep the exact
+   blueprint names (app/admin/statuses.ts); customers get plain words. */
+export const CUSTOMER_STATUS_LABELS: Record<string, string> = {
+  lead: "Request received",
+  development: "Shaping your project",
+  quote_ready: "Estimate ready",
+  factory_review: "Factory check",
+  approved: "Quote approved",
+  payment: "Payment",
+  proof: "Proof ready",
+  production: "Being made",
+  qc: "Quality check",
+  shipping: "On its way",
+  delivered: "Delivered",
+};
+
+export function customerStatusLabel(status: string | null | undefined): string {
+  const value = (status || "").trim().toLowerCase();
+  if (!value) return "In progress";
+  if (CUSTOMER_STATUS_LABELS[value]) return CUSTOMER_STATUS_LABELS[value];
+  const words = value.replace(/_/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 export type NextStep = {
   headline: string;
   detail: string;

@@ -866,7 +866,6 @@ function Conversation({
       use_type: next.useType || "FLOWER",
       flavor_count: next.flavorCount || null,
       flavor_split: next.flavorSplit || null,
-      status: next.status || "development",
       artwork_status: next.artworkStatus || null,
       size: next.size || null,
       closure: next.closure || null,
@@ -886,11 +885,15 @@ function Conversation({
         return next;
       }
 
+      /* The stage is only set when the project is created. Later updates must
+         not send it: the team moves the stage, and the database refuses a
+         customer who tries. */
       const { updated_at, ...insertPayload } = payload;
+      void updated_at;
 
       const { data, error } = await getBrowserSupabase()
         .from("projects")
-        .insert(insertPayload)
+        .insert({ ...insertPayload, status: next.status || "development" })
         .select("id, project_number")
         .single();
 

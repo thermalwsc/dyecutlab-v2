@@ -58,13 +58,28 @@ export async function moveFactoryProject(formData: FormData) {
   if (!move || String(formData.get("from") ?? "") !== project.status) back(path, { error: "stale" });
 
   if (!isServiceRoleConfigured()) back(path, { error: "no_service_key" });
-  const { data: updated, error } = await getServiceRoleSupabase()
-    .from("projects")
-    .update({ status: move.to, updated_at: new Date().toISOString() })
-    .eq("id", project.id)
-    .eq("factory_id", profile.factory_id)
-    .eq("status", project.status)
-    .select("id");
+  /* acting_user_id tells the activity history who pressed the button: this write
+     uses the service role, so the database cannot see the user itself. The
+     trigger records it and clears it again. If the activity migration has not
+     been applied yet the column does not exist; then the move is saved without
+     it, so the factory's buttons never depend on deploy order. */
+  const writeMove = (withActor: boolean) =>
+    getServiceRoleSupabase()
+      .from("projects")
+      .update({
+        status: move.to,
+        ...(withActor ? { acting_user_id: user.id } : {}),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", project.id)
+      .eq("factory_id", profile.factory_id)
+      .eq("status", project.status)
+      .select("id");
+
+  let { data: updated, error } = await writeMove(true);
+  if (error && (error.code === "42703" || error.code === "PGRST204")) {
+    ({ data: updated, error } = await writeMove(false));
+  }
 
   if (error || !updated?.length) {
     if (error) console.error("FACTORY MOVE ERROR:", error.message);

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { JOURNEY_STEPS, REQUEST_STEPS, journeyStepIndex, nextStepFor, requestInfoFor } from "../lib/projectJourney.ts";
+import { JOURNEY_STEPS, REQUEST_STEPS, customerStatusLabel, journeyStepIndex, nextStepFor, requestInfoFor } from "../lib/projectJourney.ts";
 import { PROJECT_STATUSES } from "../app/admin/statuses.ts";
 
 test("every project status belongs to exactly one customer step", () => {
@@ -24,6 +24,26 @@ test("statuses map to the right step, and unknown ones fall back to the first", 
   assert.equal(journeyStepIndex("legacy-value"), 0);
   assert.equal(journeyStepIndex(null), 0);
   assert.equal(journeyStepIndex(undefined), 0);
+});
+
+test("every stage has a plain customer name, different from the team's jargon", () => {
+  const seen = new Set<string>();
+  for (const status of PROJECT_STATUSES) {
+    const label = customerStatusLabel(status);
+    assert.ok(label && !label.includes("_"), `${status} -> ${label}`);
+    seen.add(label);
+  }
+  assert.equal(seen.size, PROJECT_STATUSES.length, "no two stages share a name");
+  assert.equal(customerStatusLabel("lead"), "Request received");
+  assert.equal(customerStatusLabel("production"), "Being made");
+  assert.equal(customerStatusLabel("LEAD"), "Request received", "case does not matter");
+});
+
+test("unknown or empty stages still read sensibly for a customer", () => {
+  assert.equal(customerStatusLabel(null), "In progress");
+  assert.equal(customerStatusLabel(undefined), "In progress");
+  assert.equal(customerStatusLabel("   "), "In progress");
+  assert.equal(customerStatusLabel("legacy_value"), "Legacy value");
 });
 
 test("the customer only has something to do at the estimate and the proof", () => {

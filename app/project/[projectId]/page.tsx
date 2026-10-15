@@ -12,8 +12,14 @@ import { brandFont } from "../../fonts";
 import { Footer, Header } from "../../updates/SiteChrome";
 import { projectStatusLabel } from "../../admin/statuses";
 import { getBrowserSupabase } from "../../../lib/supabase/browser";
-import { JOURNEY_STEPS, journeyStepIndex } from "../../../lib/projectJourney";
+import { JOURNEY_STEPS, customerStatusLabel, journeyStepIndex } from "../../../lib/projectJourney";
 import { chatErrorMessage } from "../../../lib/chatErrors";
+import {
+  activityDate,
+  cleanActivity,
+  describeActivity,
+  type ActivityRow,
+} from "../../../lib/projectActivity";
 
 /* Tracker steps come from the shared customer journey (lib/projectJourney.ts),
    so the project page and the dashboard always agree. */
@@ -239,8 +245,12 @@ export default function ProjectPage() {
   /* which part of the workspace is showing: on a phone the tabs switch
      between them, on a wide screen the chat is always beside the project */
   const [tab, setTab] = useState<
-    "overview" | "files" | "chat"
+    "overview" | "files" | "activity" | "chat"
   >("overview");
+
+  const [activity, setActivity] = useState<ActivityRow[]>([]);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activityFailed, setActivityFailed] = useState(false);
 
   const [hasEarlier, setHasEarlier] = useState(false);
 
@@ -324,6 +334,33 @@ export default function ProjectPage() {
       console.error("MESSAGE LOAD ERROR:", error);
     } finally {
       setMessagesLoading(false);
+    }
+  }
+
+  /* Stage history for the Activity tab. Read-only: rows are written by database
+     triggers, never from this page. */
+  async function loadActivity() {
+    try {
+      setActivityLoading(true);
+      setActivityFailed(false);
+
+      const response = await fetch(
+        `/api/projects/${projectId}/activity`,
+        { cache: "no-store" }
+      );
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data) {
+        setActivityFailed(true);
+        return;
+      }
+
+      setActivity(cleanActivity(data.activity));
+    } catch (error) {
+      console.error("ACTIVITY LOAD ERROR:", error);
+      setActivityFailed(true);
+    } finally {
+      setActivityLoading(false);
     }
   }
 
@@ -895,7 +932,13 @@ export default function ProjectPage() {
   |--------------------------------------------------------------------------
   */
 
-  const status = projectStatusLabel(
+  /* The team sees the exact blueprint stage names; a customer sees plain words. */
+  const stageLabel = (value: string) =>
+    teamInfo
+      ? projectStatusLabel(value)
+      : customerStatusLabel(value);
+
+  const status = stageLabel(
     project.status || "development"
   );
 
@@ -1060,6 +1103,7 @@ export default function ProjectPage() {
               [
                 ["overview", "Overview"],
                 ["files", "Files"],
+                ["activity", "Activity"],
                 ["chat", "Chat"],
               ] as const
             ).map(([value, label]) => (
@@ -1076,7 +1120,10 @@ export default function ProjectPage() {
                     ? "page"
                     : undefined
                 }
-                onClick={() => setTab(value)}
+                onClick={() => {
+                  setTab(value);
+                  if (value === "activity") void loadActivity();
+                }}
               >
                 {label}
                 {value === "files" &&
@@ -1339,6 +1386,62 @@ export default function ProjectPage() {
                     />
                   ))}
                 </div>
+              )}
+          </section>
+
+          {/* ACTIVITY */}
+
+          <section className="section activity-section">
+            <div className="eyebrow">
+              ACTIVITY
+            </div>
+
+            {activityLoading && (
+              <div className="files-loading">
+                LOADING HISTORY...
+              </div>
+            )}
+
+            {!activityLoading && activityFailed && (
+              <div className="upload-error">
+                The history could not be loaded. Please try again in a moment.
+              </div>
+            )}
+
+            {!activityLoading &&
+              !activityFailed &&
+              activity.length === 0 && (
+                <p className="activity-empty">
+                  Nothing has happened on this project yet.
+                </p>
+              )}
+
+            {!activityLoading &&
+              !activityFailed &&
+              activity.length > 0 && (
+                <ol className="activity-list">
+                  {activity.map((item) => (
+                    <li
+                      key={item.id}
+                      className="activity-item"
+                    >
+                      <span className="activity-dot" />
+
+                      <div>
+                        <div className="activity-text">
+                          {describeActivity(
+                            item,
+                            stageLabel
+                          )}
+                        </div>
+
+                        <div className="activity-date">
+                          {activityDate(item.created_at)}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
               )}
           </section>
 
@@ -3803,6 +3906,72 @@ const styles = `
   .workspace[data-tab="files"] .status-section,
   .workspace[data-tab="files"] .brief-section {
     display: none;
+  }
+
+  /* the history shows only on its own tab */
+  .activity-section {
+    display: none;
+  }
+
+  .workspace[data-tab="activity"] .status-section,
+  .workspace[data-tab="activity"] .brief-section,
+  .workspace[data-tab="activity"] .files-section {
+    display: none;
+  }
+
+  .workspace[data-tab="activity"] .activity-section {
+    display: block;
+  }
+
+  .activity-list {
+    list-style: none;
+    margin: 20px 0 0;
+    padding: 0;
+  }
+
+  .activity-item {
+    position: relative;
+    display: flex;
+    gap: 14px;
+    padding: 0 0 22px;
+  }
+
+  .activity-item:not(:last-child)::before {
+    content: "";
+    position: absolute;
+    left: 6px;
+    top: 18px;
+    bottom: 0;
+    width: 2px;
+    background: #e4e4e7;
+  }
+
+  .activity-dot {
+    flex: 0 0 14px;
+    width: 14px;
+    height: 14px;
+    margin-top: 5px;
+    border-radius: 50%;
+    background: #c2f23a;
+    border: 2px solid #000000;
+  }
+
+  .activity-text {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.35;
+  }
+
+  .activity-date {
+    margin-top: 3px;
+    color: #6b6b73;
+    font-size: 13px;
+  }
+
+  .activity-empty {
+    margin: 18px 0 0;
+    color: #52525b;
+    font-size: 15px;
   }
 
   /* phone and tablet: the tabs switch between the project and the chat */
