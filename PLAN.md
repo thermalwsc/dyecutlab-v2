@@ -2,7 +2,7 @@
 
 Custom packaging made simple. A customer describes an idea, DCL turns it into a factory-ready specification, a verified quote, payment, proof, production and delivery. This file is the engineering view of the 12-week plan the client sees (`F:\DYECUTLAB-Work\12-Week-Plan\index.html`). The task log is `F:\DYECUTLAB-Work\TaskLogHTML\index.html`.
 
-Last updated: Wed, Oct 14, 2026 (week 3).
+Last updated: Thu, Oct 15, 2026 (week 3).
 
 ---
 
@@ -54,10 +54,15 @@ Last updated: Wed, Oct 14, 2026 (week 3).
 - Message history loads in pages (newest 50, earlier on request).
 - Intake chat saves its conversation to the project and uploads the reference image for real, with clear upload errors.
 - Project page redesigned: header with picture, tabs, chat beside the project on wide screens, phone and tablet layouts, "Ask BABA" button on small screens.
-- Automated tests: 63 passing (`npm test`).
+- The start-your-project chat now sees the recent conversation and asks short plain questions; reopening it from the project view reloads the saved conversation instead of re-sending the opening message.
+- One shared quantity rule (`lib/production.ts`), confirmed by the client, used by both chats and both AI prompts.
+- Project activity history: a `project_activity` table written by database triggers (created and every stage change, with who and when), read by the owner, the team and the assigned factory, never writable through the app. Activity tab on the project page, backed by a read-only route. 22 SQL checks pass.
+- Stage guard: only the team and the server can change a project's stage, and a customer can only create a project at the first stages. 11 SQL checks pass.
+- Customers see plain stage names (Request received, Being made, and so on); the team keeps the exact names.
+- Automated tests: 88 passing (`npm test`).
 
-### Verified by the developer vs still to confirm
-Built and passing tests, but not yet confirmed by hand: offline-send test, the paging URL check (`/api/projects/DCL-00060/messages?limit=2`), the full `/app` run with a reference image, and the redesigned project page at tablet and desktop widths.
+### Verified vs still to confirm
+Confirmed with a signed-in session: message paging, PNG upload and `.exe` refusal, the AI's quantity answers, saved conversation on the team side, the offline send message, and the project page at phone, tablet and desktop sizes. Still to confirm by hand: a team stage change appears in the Activity tab, and the factory's status button still works and is named "by the factory" after the guard.
 
 ---
 
@@ -69,8 +74,8 @@ Weeks are 25 h each, 300 h in total. Percentages are the share of a task that is
 |---|---|---|
 | 1 | Authentication and accounts | Done |
 | 2 | Security and data foundation (including the three dashboards, moved up) | Done |
-| 3 | Project lifecycle and DICI chat fixes | In progress (about 62%) |
-| 4 | Customer workspace | In progress (about 33%) |
+| 3 | Project lifecycle and DICI chat fixes | In progress (about 82%) |
+| 4 | Customer workspace | In progress (about 35%) |
 | 5 | Quoting engine | Not started |
 | 6 | Factory portal and admin | Not started |
 | 7 | Bilingual layer (English and Chinese) | Not started |
@@ -80,7 +85,7 @@ Weeks are 25 h each, 300 h in total. Percentages are the share of a task that is
 | 11 | Private beta launch | Not started |
 | 12 | Observe, improve and plan next | Not started |
 
-Overall about 25% of the plan.
+Overall about 27% of the plan.
 
 ### Week 3 detail
 
@@ -89,8 +94,8 @@ Overall about 25% of the plan.
 | Final cross-account checks and factory file permissions | Done | Mon |
 | Fix the chat bugs (audit, safe errors, value checks, memory, PDF results, error handling, paging) | Done and tested | Mon–Tue |
 | Save every conversation to its project (intake chat, reference image) | Done and tested | Wed |
-| Every stage change recorded in an activity history | Not started | Thu, 4 h |
-| Real project stages: Lead, Development, Quote Ready, Factory Review, Approved, Payment, Proof, Production, QC, Shipping, Delivered | About 30% | Thu–Fri, 3 h |
+| Every stage change recorded in an activity history (with a guard so only the team and server can move a stage) | Done and SQL-tested | Thu |
+| Real project stages: Lead, Development, Quote Ready, Factory Review, Approved, Payment, Proof, Production, QC, Shipping, Delivered | About 60% (plain customer names done; factory moves and team picker on the same list left) | Thu–Fri, 3 h |
 | Switch "Start your project" from the temporary `/start` form to the AI chat (`START_PROJECT_HREF` in `lib/contact.ts`) and retire the form | Not started | Fri, 2 h |
 | Limits on AI and upload requests: tune the numbers (the monthly cap is set) | About 98% | Fri, 0.5 h |
 
