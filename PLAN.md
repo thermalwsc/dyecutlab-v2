@@ -24,9 +24,9 @@ Last updated: Thu, Oct 15, 2026 (week 3).
 
 **Access rules.** Helper functions `is_dcl_team()`, `my_factory_id()`, `can_access_project()`, `can_access_project_number()`, `can_edit_project_files()`. Factories can read but never change or delete customers' files. The service-role key is used only on the server after the session and role are checked.
 
-**Chat.** Two chats share one AI persona, BABA:
-1. **Intake chat** (`/app`, `/api/baba`): the customer says what they want, BABA asks follow-ups, a project is created after the first reply, the conversation and an optional reference image are saved to it.
-2. **Project chat** (`/project/[id]`, `/api/projects/[id]/baba`): BABA answers from the project brief and stored file results, remembers the last 10 messages, and may change a short list of brief fields. Every AI value is checked before it is saved (`lib/chatUpdates.ts`).
+**Chat.** Two chats share one AI persona, DICI:
+1. **Intake chat** (`/app`, `/api/baba`): the customer says what they want, DICI asks follow-ups, a project is created after the first reply, the conversation and an optional reference image are saved to it.
+2. **Project chat** (`/project/[id]`, `/api/projects/[id]/baba`): DICI answers from the project brief and stored file results, remembers the last 10 messages, and may change a short list of brief fields. Every AI value is checked before it is saved (`lib/chatUpdates.ts`).
 
 **Production rule.** 1 unit = 128 finished pieces; bulk orders are multiples of 100, so the whole order rounds up to the next 100 (5 units = 700, 10 units = 1,300), and with flavors each flavor is also a multiple of 100. Confirmed by the client; one shared calculation in `lib/production.ts`.
 
@@ -49,20 +49,27 @@ Last updated: Thu, Oct 15, 2026 (week 3).
 - Database fix found by the tests: factories could rename or delete customer files; now only the owner or team can (migration `20261012000000`).
 - Project chat hardening: safe errors, safe fields, AI values checked, customer message saved only after the reply succeeds.
 - Conversation memory (last 10 messages, 500 characters each, 3,000 in total).
-- PDFs: BABA now reads the stored preflight instead of claiming a PDF was not analyzed; replies are short, plain, never offer actions BABA cannot do.
+- PDFs: DICI now reads the stored preflight instead of claiming a PDF was not analyzed; replies are short, plain, never offer actions DICI cannot do.
 - Failed chat messages show a plain reason (limit, signed out, offline) and give the typed text back.
 - Message history loads in pages (newest 50, earlier on request).
 - Intake chat saves its conversation to the project and uploads the reference image for real, with clear upload errors.
-- Project page redesigned: header with picture, tabs, chat beside the project on wide screens, phone and tablet layouts, "Ask BABA" button on small screens.
+- Project page redesigned: header with picture, tabs, chat beside the project on wide screens, phone and tablet layouts, "Ask DICI" button on small screens.
 - The start-your-project chat now sees the recent conversation and asks short plain questions; reopening it from the project view reloads the saved conversation instead of re-sending the opening message.
 - One shared quantity rule (`lib/production.ts`), confirmed by the client, used by both chats and both AI prompts.
 - Project activity history: a `project_activity` table written by database triggers (created and every stage change, with who and when), read by the owner, the team and the assigned factory, never writable through the app. Activity tab on the project page, backed by a read-only route. 22 SQL checks pass.
 - Stage guard: only the team and the server can change a project's stage, and a customer can only create a project at the first stages. 11 SQL checks pass.
 - Customers see plain stage names (Request received, Being made, and so on); the team keeps the exact names.
-- Automated tests: 88 passing (`npm test`).
+- "Start your project" now opens the DICI chat at `/app` everywhere (`START_PROJECT_HREF`); the old `/start` form redirects to it and its files are kept. A visitor who is not signed in is sent to sign-in first, with a message written for people starting a project.
+- Team alert: when a customer's chat creates a project, the team gets one email and one text (once per project, claimed in the database). Confirmed working by email.
+- The AI is called DICI on every customer-facing screen (the stored message role and route names keep the old internal name).
+- Wording and rules: "designs or flavors" for what the code calls flavors (chosen by the client); a bare count such as "100 boxes" makes DICI ask whether it means pieces or units; pieces convert to units with a tested rule.
+- The `/app` start screen, contact step and chat are redesigned in the site's lime and black style; "View project" opens the real project page.
+- Customers see plain stage names; the customer wording for estimate and proof stages says "sent by text" until those views exist (two switches in `lib/siteFlags.ts`).
+- AI and upload limits re-tuned from real usage (about $0.001 per request): chat 80 per account and 300 per site per day, image analysis 20 and 100, uploads 50 and 400. A test keeps a full day at the ceiling near a tenth of the $25 monthly cap.
+- Automated tests: 121 passing (`npm test`).
 
 ### Verified vs still to confirm
-Confirmed with a signed-in session: message paging, PNG upload and `.exe` refusal, the AI's quantity answers, saved conversation on the team side, the offline send message, and the project page at phone, tablet and desktop sizes. Still to confirm by hand: a team stage change appears in the Activity tab, and the factory's status button still works and is named "by the factory" after the guard.
+Confirmed with a signed-in session: message paging, PNG upload and `.exe` refusal, the AI's quantity answers, saved conversation on the team side, the offline send message, the project page at phone, tablet and desktop sizes, and the team alert email. Moved to week 4 testing (needs a team and a factory sign-in): a team stage change appears in the Activity tab, and the factory's status button still works and is named "by the factory" after the guard.
 
 ---
 
@@ -100,7 +107,7 @@ Overall about 27% of the plan.
 | Limits on AI and upload requests: tune the numbers (the monthly cap is set) | About 98% | Fri, 0.5 h |
 
 ### Week 4 detail
-Project page with a live progress tracker, files and messages (about 40%); DICI app restyled to the lime and black brand (the project page and chat are done, the intake page is not); email updates when a project changes stage; version-controlled database setup and a separate test environment (about 50%).
+Project page with a live progress tracker, files and messages (about 40%); DICI app restyled to the lime and black brand (the project page and chat are done, the intake page is not); email updates when a project changes stage; version-controlled database setup and a separate test environment (about 50%); hand-test the stage history and the factory's status button with real team and factory accounts (moved from week 3, about 0.5 h).
 
 ### Weeks 5–12 (summary)
 - **5 Quoting engine:** estimate from style, size, quantity, finish, tooling, freight and margin; always labeled as an estimate; quote versions per project; editable pricing tables; quote PDF.
@@ -120,9 +127,10 @@ Multiple factories with RFQs, bids and comparison; white label for factories, br
 ## 4. Open items
 
 **Developer**
-- Run the pending checks listed in section 2 and close the chat-bugs task.
-- Log Tue and Wed in the task log and plan (hours to confirm).
-- Optional, to be confirmed with the client: alert the team (email and text) when a chat creates a project (about 1 h); a "Chat with BABA" button on dashboard project cards (about 30 min); friendlier customer wording than "Lead" (for example "Request received").
+- Week 4 testing: with a team account change a project's stage and check the Activity tab; with a factory account press the status button and check it works and is named "by the factory".
+- Log Friday in the task log and plan (hours to confirm).
+- Before the live site uses the team alert: set the real `STAFF_NOTIFY_EMAIL` and `STAFF_NOTIFY_PHONE` in Vercel, remove the temporary test values from `.env.local`, and ask Gilbert to text the business line once so the text alert can be tried from a US number. Run migrations 20261015000000, 20261015010000 and 20261015020000 on the live Supabase project if it is a different one.
+- Optional, to be confirmed with the client: a "Chat with DICI" button on dashboard project cards (about 30 min); keep or remove the "Text us" option now that the chat works.
 - Revoke the old OpenAI key ending DGcA; add the Google Search Console TXT record; Apple Developer enrollment; redeploy the plan and task log to Netlify; `git push` so Vercel gets the latest commits.
 
 **Client (Gilbert)**

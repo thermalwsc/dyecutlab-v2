@@ -1,8 +1,8 @@
 /* =========================================================
    DYE CUT LAB — saving the "start your project" conversation
 ============================================================
-   The intake chat creates the project after BABA's first reply. From then on each
-   exchange (what the customer said, what BABA asked next) is stored in
+   The intake chat creates the project after DICI's first reply. From then on each
+   exchange (what the customer said, what DICI asked next) is stored in
    project_messages, so the team can read it and the project chat can pick the
    conversation up. Pure function, covered by tests/intakeMessages.test.ts. */
 
@@ -32,7 +32,7 @@ export function savedToShown(rows: Array<{ id?: unknown; role?: unknown; message
   return shown;
 }
 
-/* The customer's line first, then BABA's reply one millisecond later so the two
+/* The customer's line first, then DICI's reply one millisecond later so the two
    always sort in the order they were spoken. Empty lines are left out. */
 export function intakeRows(customerText: string, babaText?: string | null, now: Date = new Date()): IntakeRow[] {
   const rows: IntakeRow[] = [];

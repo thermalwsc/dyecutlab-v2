@@ -3,6 +3,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 import { createRateLimiter } from "./rateLimit";
 import { getServiceRoleSupabase, isServiceRoleConfigured } from "./supabase/admin";
+import { USAGE_RULES, type UsageKind } from "./usageRules";
 
 /* =========================================================
    DYE CUT LAB — limits on AI and upload requests
@@ -20,25 +21,9 @@ import { getServiceRoleSupabase, isServiceRoleConfigured } from "./supabase/admi
    network blip) we log it and fall back to the burst limit alone, so a counting
    problem never takes the chat or uploads down. */
 
-export type UsageKind = "chat" | "analyze" | "preflight" | "upload";
-
-type Rule = {
-  /** Most uses in a one-minute window, per account. */
-  perMinute: number;
-  /** Most uses per UTC day, per account. */
-  perDay: number;
-  /** Most uses per UTC day across the whole site. */
-  siteDay: number;
-  /** Shown to the person when they hit the limit. */
-  label: string;
-};
-
-export const USAGE_RULES: Record<UsageKind, Rule> = {
-  chat: { perMinute: 12, perDay: 150, siteDay: 2000, label: "chat messages" },
-  analyze: { perMinute: 5, perDay: 40, siteDay: 500, label: "file analyses" },
-  preflight: { perMinute: 8, perDay: 100, siteDay: 1000, label: "file checks" },
-  upload: { perMinute: 10, perDay: 100, siteDay: 2000, label: "uploads" },
-};
+/* The numbers live in lib/usageRules.ts (plain constants, checked by a test
+   against the cost budget). */
+export { USAGE_RULES, type UsageKind } from "./usageRules";
 
 /* Upload and chat input rules live in lib/uploadRules.ts (shared with the tests). */
 export {

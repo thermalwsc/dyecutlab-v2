@@ -39,6 +39,7 @@
 */
 
 import { type ChannelResult, errorMessage } from "./channels";
+import { type NewProjectAlert, buildProjectAlertSms } from "./projectAlert";
 import { CONTACT } from "./contact";
 
 const SENDBLUE_API_BASE = "https://api.sendblue.com";
@@ -232,6 +233,21 @@ export async function sendStaffQuoteSms(input: {
     to: staffPhone,
     content: `Hi ${CONTACT.personName} - new DYE CUT LAB quote request${input.customer ? ` from ${input.customer.name}` : ""}.\nText them: ${input.phone}${input.customer ? `\n${input.customer.email}` : ""}\n\n"${summary}"`,
   });
+}
+
+/* Staff text when a customer's chat creates a project (the email is the full
+   record). Same Sendblue prerequisite as above. */
+export async function sendStaffProjectSms(input: NewProjectAlert): Promise<ChannelResult> {
+  const staffPhone = getStaffPhone();
+
+  if (!staffPhone) {
+    return {
+      status: "skipped",
+      detail: "STAFF_NOTIFY_PHONE is not configured.",
+    };
+  }
+
+  return sendSms({ to: staffPhone, content: buildProjectAlertSms(input) });
 }
 
 /* Staff text when a factory moves a project (the email is the full record). */

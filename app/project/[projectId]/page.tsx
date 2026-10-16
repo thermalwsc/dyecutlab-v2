@@ -1198,7 +1198,7 @@ export default function ProjectPage() {
               />
 
               <BriefItem
-                label="FLAVORS"
+                label="DESIGNS"
                 value={flavors}
               />
 
@@ -1461,7 +1461,7 @@ export default function ProjectPage() {
             <div className="baba-heading">
               <div>
                 <div className="eyebrow">
-                  BABA
+                  DICI
                 </div>
 
                 <div className="baba-online">
@@ -1585,8 +1585,8 @@ export default function ProjectPage() {
               onKeyDown={handleKeyDown}
               placeholder={
                 sending
-                  ? "BABA is thinking..."
-                  : "Message BABA"
+                  ? "DICI is thinking..."
+                  : "Message DICI"
               }
               disabled={sending}
             />
@@ -1622,7 +1622,7 @@ export default function ProjectPage() {
             window.scrollTo({ top: 0 });
           }}
         >
-          Ask BABA
+          Ask DICI
         </button>
       )}
 

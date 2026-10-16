@@ -35,7 +35,7 @@ const WHOLE_NUMBER_FIELDS: Record<string, number> = {
 
 const FIELD_LABELS: Record<string, string> = {
   units: "units",
-  flavor_count: "number of flavors",
+  flavor_count: "number of designs or flavors",
   pouch_size: "pouch size",
   box_dimensions: "box dimensions",
   material: "material",

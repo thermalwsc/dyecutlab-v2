@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { requireRole } from "../../lib/auth/guard";
+import { brandFont } from "../fonts";
 
 export const metadata: Metadata = {
   title: "Start Your Project — DYE CUT LAB",
@@ -16,5 +17,7 @@ export default async function AppRouteLayout({
   children: React.ReactNode;
 }) {
   await requireRole(["customer", "dcl_staff", "dcl_admin"], { next: "/app" });
-  return <>{children}</>;
+  /* The same brand font as the rest of the site, for every screen of the chat
+     (start, contact details, conversation). */
+  return <div className={brandFont.className}>{children}</div>;
 }

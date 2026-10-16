@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { adjustQuantityForFlavors, calculateProduction, productionRuleText, roundOrderQuantity } from "../lib/production.ts";
+import { adjustQuantityForFlavors, calculateProduction, productionRuleText, roundOrderQuantity, unitsForPieces } from "../lib/production.ts";
 
 /* The client's own examples (Oct 15, 2026): 5 units is 700, 10 units is 1,300. */
 test("the client's examples", () => {
@@ -55,10 +55,27 @@ test("the helpers behave on their own", () => {
   assert.deepEqual(adjustQuantityForFlavors(128, 2.9), { total: 200, perFlavor: 100 }, "fractions round down to 2");
 });
 
+test("pieces turn into the smallest number of units that covers them", () => {
+  assert.equal(unitsForPieces(200), 1);
+  assert.equal(unitsForPieces(300), 2);
+  assert.equal(unitsForPieces(1000), 8);
+  assert.equal(unitsForPieces(150), 1);
+  assert.equal(unitsForPieces(10), 1);
+  for (const bad of [0, -5, null, undefined, NaN, Infinity]) assert.equal(unitsForPieces(bad as never), 0, String(bad));
+
+  /* brute force: the formula must agree with "smallest n whose total is enough" */
+  for (let pieces = 1; pieces <= 5000; pieces++) {
+    let n = 1;
+    while (calculateProduction(n).total < pieces) n++;
+    assert.equal(unitsForPieces(pieces), n, `${pieces} pieces`);
+  }
+});
+
 test("the rule told to the AI matches what the code does", () => {
   const text = productionRuleText();
   assert.match(text, /1 unit = 128 pieces, ordered as 200/);
   assert.match(text, /5 units = 640 pieces, ordered as 700/);
   assert.match(text, /10 units = 1,280 pieces, ordered as 1,300/);
   assert.match(text, /1 unit with 3 flavors = 300/);
+  assert.match(text, /200 pieces = 1 unit, 300 pieces = 2 units, 1,000 pieces = 8 units/);
 });

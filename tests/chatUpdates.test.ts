@@ -78,7 +78,7 @@ test("a null value means nothing to change, not an error", () => {
 test("the note to the customer names what was left out", () => {
   assert.equal(rejectedNote([]), "");
   assert.match(rejectedNote(["units"]), /units/);
-  assert.match(rejectedNote(["units", "flavor_count"]), /units and number of flavors/);
+  assert.match(rejectedNote(["units", "flavor_count"]), /units and number of designs or flavors/);
   assert.match(rejectedNote(["units", "size", "finish"]), /units, size and finish/);
   assert.ok(!/units_|flavor_count/.test(rejectedNote(["flavor_count"])), "uses friendly names, not column names");
 });

@@ -6,6 +6,8 @@
    about what happens next. Shared by the dashboard (/account) and the
    project page so they can never disagree. No server-only imports. */
 
+import { ESTIMATES_IN_APP, PROOFS_IN_APP } from "./siteFlags.ts";
+
 export const JOURNEY_STEPS: { label: string; statuses: string[] }[] = [
   { label: "Brief", statuses: ["lead", "development"] },
   { label: "Quote", statuses: ["quote_ready", "factory_review", "approved"] },
@@ -122,8 +124,27 @@ const FALLBACK: NextStep = {
   tone: "waiting",
 };
 
+/* Until the estimate and proof views exist in the app (lib/siteFlags.ts), these
+   two stages tell the customer it was sent by text instead of offering a button
+   that leads nowhere. */
+const SENT_BY_TEXT: Record<string, NextStep> = {
+  quote_ready: {
+    headline: "Your estimate is ready",
+    detail: "We've sent it to you by text. Reply to us to go ahead. It's an estimate until a factory confirms it.",
+    tone: "waiting",
+  },
+  proof: {
+    headline: "Your proof is ready",
+    detail: "We've sent it to you by text. Reply to approve it or ask for changes.",
+    tone: "waiting",
+  },
+};
+
 export function nextStepFor(status: string | null | undefined): NextStep {
-  return NEXT_STEPS[(status || "").toLowerCase()] ?? FALLBACK;
+  const key = (status || "").toLowerCase();
+  if (key === "quote_ready" && !ESTIMATES_IN_APP) return SENT_BY_TEXT.quote_ready;
+  if (key === "proof" && !PROOFS_IN_APP) return SENT_BY_TEXT.proof;
+  return NEXT_STEPS[key] ?? FALLBACK;
 }
 
 /* ---------------------------------------------------------------------------

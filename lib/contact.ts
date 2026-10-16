@@ -18,11 +18,15 @@ export const CONTACT = {
   email: "dyecutlab@gmail.com",
 };
 
-/* Where every "Start your project" link points.
+/* Where every "Start your project" link points: the AI chat at /app.
 
-   TEMPORARY: the DICI chat at /app has active bugs, so project requests
-   go to the /start quote form for now. To switch back:
-     1. set this to "/app"
-     2. delete app/start/, app/api/quote-requests/ and lib/quoteRequests.ts
-   (keep the quote_requests table — it holds real leads). */
-export const START_PROJECT_HREF = "/start";
+   It is signed-in only, so a visitor who is not signed in is sent to sign-in
+   first and brought back (the proxy and the page both check).
+
+   The old /start quote form is retired: next.config.ts redirects /start to
+   /app, so old links and texts still work. The form's files (app/start/,
+   app/api/quote-requests/, lib/quoteRequests.ts) are kept for now; delete
+   them once nobody needs them. Keep the quote_requests table, it holds real
+   leads. To switch the form back on, point this at the form's page again and
+   remove the redirect in next.config.ts. */
+export const START_PROJECT_HREF = "/app";

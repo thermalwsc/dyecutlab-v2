@@ -3,11 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 import { getBrowserSupabase } from "../../lib/supabase/browser";
 import { intakeRows, savedToShown } from "../../lib/intakeMessages";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Footer, Header } from "../updates/SiteChrome";
+import { MAX_CHAT_CHARS } from "../../lib/uploadRules";
+import { questionKindFromText } from "../../lib/intakeQuestions";
+import { summaryRows } from "../../lib/intakeSummary";
 import { toRequestHistory } from "../../lib/chatHistory";
 import { PIECES_PER_UNIT, calculateProduction, roundOrderQuantity } from "../../lib/production";
 import { uploadErrorMessage } from "../../lib/chatErrors";
 
-type Stage = "home" | "capture" | "conversation" | "project";
+type Stage = "home" | "capture" | "conversation";
 
 type ClientData = {
   id: string | null;
@@ -212,6 +219,7 @@ function inferProjectDetails(text: string): Partial<ProjectData> {
 
 
 export default function Home() {
+  const router = useRouter();
   const [stage, setStage] = useState<Stage>("home");
   const [referenceImage, setReferenceImage] = useState<string | null>(null);
   const [project, setProject] = useState<ProjectData>(EMPTY_PROJECT);
@@ -303,18 +311,10 @@ export default function Home() {
         referenceImage={referenceImage}
         setReferenceImage={setReferenceImage}
         onBack={() => setStage("home")}
-        onViewProject={() => setStage("project")}
-      />
-    );
-  }
-
-  if (stage === "project") {
-    return (
-      <Project
-        project={project}
-        referenceImage={referenceImage}
-        onBack={() => setStage("conversation")}
-        onContinue={() => setStage("conversation")}
+        onViewProject={() => {
+          /* the real project page: stages, activity, files and the chat */
+          if (project.projectNumber) router.push(`/project/${encodeURIComponent(project.projectNumber)}`);
+        }}
       />
     );
   }
@@ -334,12 +334,27 @@ function Homepage({
   const [message, setMessage] = useState("");
 
   const categories = [
-    "POUCHES",
-    "BOXES",
-    "JARS",
-    "PRE-ROLL",
-    "DISPLAY",
-    "CUSTOM",
+    { label: "Pouches", ask: "I want to make custom pouches." },
+    { label: "Boxes", ask: "I want to make custom boxes." },
+    { label: "Jars", ask: "I want to make custom jars." },
+    { label: "Pre-rolls", ask: "I want to make custom pre-roll packaging." },
+    { label: "Display", ask: "I want to make a custom display." },
+    { label: "Something else", ask: "I want to make something custom." },
+  ];
+
+  const examples = [
+    { label: "Custom boxes", image: "/boxes.png", ask: "I want to make custom boxes." },
+    { label: "Mylar bags", image: "/mylar-bags.png", ask: "I want to make custom mylar bags." },
+    { label: "Novelties", image: "/novelties.png", ask: "I want to make custom novelties." },
+    { label: "Sticker rolls", image: "/sticker-rolls.png", ask: "I want to make custom stickers." },
+  ];
+
+  const steps = [
+    { title: "Talk", text: "Tell DICI what you want to make." },
+    { title: "Develop", text: "We build the specs and find the right factory." },
+    { title: "Review", text: "You check your proof and approve it." },
+    { title: "Produce", text: "We manufacture your project." },
+    { title: "Deliver", text: "We ship it to your door." },
   ];
 
   function submit() {
@@ -348,206 +363,161 @@ function Homepage({
   }
 
   return (
-    <main className="min-h-screen bg-white text-black">
-      {/* HEADER */}
-      <header className="flex items-start justify-between px-5 pt-6">
-        <Logo />
-
-        <button
-          aria-label="Open menu"
-          className="flex h-9 w-9 flex-col items-center justify-center gap-[5px]"
-        >
-          <span className="h-px w-5 bg-black" />
-          <span className="h-px w-5 bg-black" />
-          <span className="h-px w-5 bg-black" />
-        </button>
-      </header>
+    <main className="bg-[#fafafa] text-black">
+      <Header />
 
       {/* HERO */}
-      <section className="px-5 pb-12 pt-10">
+      <section className="mx-auto w-full max-w-[760px] px-5 pb-12 pt-8 sm:pt-12">
         <BabaStatus />
 
-        <h1 className="mt-7 text-[46px] font-medium leading-[0.94] tracking-[-0.055em]">
-          WHAT DO YOU
-          <br />
-          WANT TO{" "}
-          <span className="text-lime-400">
-            MAKE?
-          </span>
+        <h1 className="mt-6 text-[44px] font-black leading-[1.02] tracking-[-0.04em] sm:text-[64px]">
+          What do you want to{" "}
+          <span className="inline-block -rotate-1 rounded-2xl bg-[#c2f23a] px-3">make?</span>
         </h1>
 
-        <p className="mt-5 text-[14px] leading-5 text-zinc-600">
-          Custom print + packaging.
-          <br />
-          All in one conversation.
+        <p className="mt-5 max-w-[520px] text-[17px] font-medium leading-7 text-zinc-700">
+          Tell DICI your idea. A sentence is enough. It asks what is missing,
+          works out the quantity and starts your project.
         </p>
 
         {/* PROJECT INPUT */}
-        <div className="mt-7 rounded-[18px] border border-zinc-300 p-4">
+        <div className="mt-8 rounded-[28px] border-2 border-black bg-white p-4 shadow-[4px_4px_0_#000] focus-within:shadow-[4px_4px_0_#c2f23a]">
           <textarea
             value={message}
             onChange={(event) => setMessage(event.target.value)}
-            placeholder="Tell us what you're thinking..."
-            className="min-h-[82px] w-full resize-none bg-transparent text-[15px] outline-none placeholder:text-zinc-400"
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) submit();
+            }}
+            maxLength={MAX_CHAT_CHARS}
+            placeholder="For example: 200 mylar bags for my gummies, matte black with a gold logo"
+            aria-label="Describe what you want to make"
+            className="min-h-[110px] w-full resize-none bg-transparent px-1 text-[17px] font-medium leading-7 outline-none placeholder:text-zinc-500"
           />
 
-          <div className="mt-2 flex items-center justify-between">
-            <button
-              aria-label="Attach reference"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-200 text-xl"
-            >
-              +
-            </button>
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <p className="pl-1 text-[12px] font-medium text-zinc-500">
+              You can add pictures in the chat.
+            </p>
 
             <button
               onClick={submit}
-              aria-label="Send"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-black text-lg text-lime-400"
+              disabled={!message.trim()}
+              aria-label="Start my project"
+              className="flex h-12 items-center gap-2 rounded-full border-2 border-black bg-[#c2f23a] px-5 text-[14px] font-extrabold transition hover:bg-black hover:text-[#c2f23a] disabled:border-zinc-300 disabled:bg-zinc-200 disabled:text-white"
             >
-              ↑
+              Start <span aria-hidden="true">→</span>
             </button>
           </div>
         </div>
 
         {/* QUICK START */}
-        <div className="mt-7">
-          <p className="mb-3 text-[10px] tracking-[0.08em] text-zinc-500">
+        <div className="mt-8">
+          <p className="mb-3 text-[12px] font-bold tracking-[0.1em] text-zinc-600">
             OR START WITH
           </p>
 
           <div className="flex flex-wrap gap-2">
             {categories.map((category) => (
               <button
-                key={category}
-                onClick={() =>
-                  onStart(
-                    `I want to make custom ${category.toLowerCase()}.`
-                  )
-                }
-                className="rounded-full border border-zinc-300 px-3.5 py-2 text-[10px] font-medium tracking-wide"
+                key={category.label}
+                onClick={() => onStart(category.ask)}
+                className="rounded-full border-2 border-black bg-white px-4 py-2.5 text-[14px] font-bold transition hover:bg-[#c2f23a]"
               >
-                {category}
+                {category.label}
               </button>
             ))}
           </div>
         </div>
       </section>
 
-      {/* MADE AT THE LAB */}
-      <section className="border-t border-zinc-200 px-5 py-14">
-        <p className="text-[10px] tracking-[0.1em] text-lime-500">
-          MADE AT THE LAB
-        </p>
+      {/* EXAMPLES */}
+      <section className="border-t border-black/10 bg-white">
+        <div className="mx-auto w-full max-w-[760px] px-5 py-14">
+          <p className="text-[12px] font-extrabold tracking-[0.12em] text-[#3f6f00]">
+            MADE AT THE LAB
+          </p>
 
-        <h2 className="mt-4 text-[34px] font-medium leading-none tracking-[-0.045em]">
-          Real projects.
-          <br />
-          Real results.
-        </h2>
+          <h2 className="mt-3 text-[34px] font-black leading-[1.05] tracking-[-0.03em] sm:text-[44px]">
+            Real projects. Real results.
+          </h2>
 
-        <div className="mt-8 flex aspect-[4/5] items-center justify-center rounded-[18px] bg-zinc-100">
-          <span className="text-[10px] tracking-[0.1em] text-zinc-400">
-            PROJECT IMAGE
-          </span>
-        </div>
+          <p className="mt-3 text-[16px] font-medium text-zinc-600">
+            Tap one to start a project like it.
+          </p>
 
-        <div className="mt-5 flex items-end justify-between">
-          <div>
-            <p className="text-[14px] font-semibold">
-              CUSTOM DIE-CUT POUCH
-            </p>
-
-            <p className="mt-1 text-[11px] text-zinc-500">
-              5,000 PCS / CUSTOM PRINT
-            </p>
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4">
+            {examples.map((example) => (
+              <button
+                key={example.label}
+                onClick={() => onStart(example.ask)}
+                className="group rounded-[24px] border-2 border-black bg-[#f4f4f5] p-3 text-left transition hover:bg-[#f1f8e0]"
+              >
+                <Image
+                  src={example.image}
+                  alt=""
+                  width={400}
+                  height={400}
+                  className="aspect-square w-full object-contain"
+                />
+                <span className="mt-2 flex items-center justify-between px-1 text-[15px] font-extrabold">
+                  {example.label}
+                  <span aria-hidden="true" className="transition group-hover:translate-x-1">→</span>
+                </span>
+              </button>
+            ))}
           </div>
+        </div>
+      </section>
 
-          <button
-            aria-label="View project"
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-zinc-300"
+      {/* HOW IT WORKS */}
+      <section className="border-t border-black/10">
+        <div className="mx-auto w-full max-w-[760px] px-5 py-14">
+          <p className="text-[12px] font-extrabold tracking-[0.12em] text-[#3f6f00]">
+            HOW IT WORKS
+          </p>
+
+          <h2 className="mt-3 text-[34px] font-black leading-[1.05] tracking-[-0.03em] sm:text-[44px]">
+            From idea to delivered.
+          </h2>
+
+          <ol className="mt-8 space-y-5">
+            {steps.map((step, index) => (
+              <li key={step.title} className="flex items-start gap-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-black bg-[#c2f23a] text-[15px] font-black">
+                  {index + 1}
+                </span>
+                <div>
+                  <p className="text-[18px] font-extrabold leading-tight">{step.title}</p>
+                  <p className="mt-0.5 text-[15px] font-medium leading-6 text-zinc-600">{step.text}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      {/* TRACK IT */}
+      <section className="bg-black text-white">
+        <div className="mx-auto w-full max-w-[760px] px-5 py-14">
+          <h2 className="text-[32px] font-black leading-[1.05] tracking-[-0.03em] sm:text-[42px]">
+            Follow your project, <span className="text-[#c2f23a]">every step.</span>
+          </h2>
+
+          <p className="mt-4 max-w-[460px] text-[16px] font-medium leading-7 text-zinc-300">
+            Its stage, your files and your conversation with DICI all live in
+            your account, on any phone or computer.
+          </p>
+
+          <Link
+            href="/account"
+            className="mt-7 inline-flex items-center gap-2 rounded-full border-2 border-[#c2f23a] bg-[#c2f23a] px-6 py-3.5 text-[14px] font-extrabold text-black transition hover:bg-black hover:text-[#c2f23a]"
           >
-            →
-          </button>
+            My projects <span aria-hidden="true">→</span>
+          </Link>
         </div>
       </section>
 
-      {/* PROCESS */}
-      <section className="bg-zinc-50 px-5 py-14">
-        <p className="text-[10px] tracking-[0.1em] text-zinc-500">
-          HOW IT WORKS
-        </p>
-
-        <h2 className="mt-4 text-[34px] font-medium leading-none tracking-[-0.045em]">
-          FROM INPUT
-          <br />
-          TO OUTPUT.
-        </h2>
-
-        <div className="mt-10 space-y-7">
-          <ProcessStep
-            number="01"
-            title="TALK"
-            description="Tell us what you want to make."
-          />
-
-          <ProcessStep
-            number="02"
-            title="DEVELOP"
-            description="We build the specs and source it."
-          />
-
-          <ProcessStep
-            number="03"
-            title="SAMPLE"
-            description="You review and approve."
-          />
-
-          <ProcessStep
-            number="04"
-            title="PRODUCE"
-            description="We manufacture your project."
-          />
-
-          <ProcessStep
-            number="05"
-            title="DELIVER"
-            description="We ship it to your door."
-          />
-        </div>
-      </section>
-
-      {/* LAB CAM */}
-      <section className="bg-black px-5 py-14 text-white">
-        <div className="flex items-center gap-2 text-[10px]">
-          <span className="h-2 w-2 rounded-full bg-lime-400" />
-
-          <span className="text-lime-400">
-            LIVE
-          </span>
-        </div>
-
-        <h2 className="mt-5 text-[34px] font-medium leading-none tracking-[-0.045em]">
-          SEE WHERE
-          <br />
-          YOUR PROJECT
-          <br />
-          IS MADE.
-        </h2>
-
-        <p className="mt-5 max-w-[300px] text-[14px] leading-6 text-zinc-400">
-          Follow development and production directly from the lab.
-        </p>
-
-        <div className="mt-8 aspect-video rounded-[14px] border border-zinc-800 bg-zinc-900 p-4">
-          <div className="flex justify-between text-[9px]">
-            <span>LAB CAM_03</span>
-
-            <span className="text-lime-400">
-              ● LIVE
-            </span>
-          </div>
-        </div>
-      </section>
+      <Footer />
     </main>
   );
 }
@@ -660,60 +630,91 @@ function ClientCapture({
   }
 
   return (
-    <main className="min-h-screen bg-white text-black">
-      <header className="flex items-center justify-between px-5 py-5">
-        <button onClick={onBack} className="flex h-10 w-10 items-center justify-start text-xl" aria-label="Back">
-          ←
-        </button>
-        <Logo />
-        <div className="h-10 w-10" />
+    <main className="min-h-screen bg-[#fafafa] text-black">
+      <header className="border-b border-black/10 bg-white">
+        <div className="mx-auto grid w-full max-w-[720px] grid-cols-[48px_1fr_48px] items-center px-4 py-3">
+          <button
+            onClick={onBack}
+            aria-label="Back"
+            className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-black text-[20px] font-bold leading-none transition hover:bg-[#c2f23a]"
+          >
+            ←
+          </button>
+          <div className="text-center">
+            <BabaStatus />
+          </div>
+          <span />
+        </div>
       </header>
 
-      <section className="mx-auto max-w-[500px] px-5 pb-12 pt-10">
-        <BabaStatus />
-        <p className="mt-10 text-[9px] font-medium tracking-[0.12em] text-zinc-400">START YOUR PROJECT</p>
+      <section className="mx-auto w-full max-w-[520px] px-5 pb-12 pt-8">
+        <p className="text-[12px] font-extrabold tracking-[0.12em] text-[#3f6f00]">ALMOST THERE</p>
 
-        <h1 className="mt-4 text-[42px] font-medium leading-[0.94] tracking-[-0.055em]">
-          WHERE SHOULD<br />WE SEND YOUR<br /><span className="text-lime-400">UPDATES?</span>
+        <h1 className="mt-3 text-[38px] font-black leading-[1.05] tracking-[-0.03em] sm:text-[46px]">
+          Where should we send your{" "}
+          <span className="inline-block -rotate-1 rounded-xl bg-[#c2f23a] px-2">updates?</span>
         </h1>
 
-        <p className="mt-5 max-w-[330px] text-[13px] leading-5 text-zinc-500">
-          We'll use your mobile number for project communication. Email is optional.
+        <p className="mt-4 text-[16px] font-medium leading-7 text-zinc-700">
+          We&apos;ll text your mobile number about your project. Email is optional.
         </p>
 
-        <div className="mt-9">
-          <label className="text-[9px] font-medium tracking-[0.1em] text-zinc-400">MOBILE NUMBER</label>
-          <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" autoComplete="tel"
-            placeholder="+1 917 555 0123"
-            className="mt-2 h-14 w-full rounded-[14px] border border-zinc-300 px-4 text-[15px] outline-none focus:border-black" />
-        </div>
-
-        <div className="mt-5">
-          <label className="text-[9px] font-medium tracking-[0.1em] text-zinc-400">
-            EMAIL <span className="text-zinc-300">OPTIONAL</span>
+        <div className="mt-7 rounded-[28px] border-2 border-black bg-white p-5 shadow-[4px_4px_0_#000]">
+          <label className="block">
+            <span className="text-[13px] font-bold">Mobile number</span>
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="+1 917 555 0123"
+              className="mt-2 h-14 w-full rounded-2xl border-2 border-black px-4 text-[17px] font-medium outline-none placeholder:text-zinc-400 focus:shadow-[3px_3px_0_#c2f23a]"
+            />
           </label>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} inputMode="email" autoComplete="email"
-            placeholder="you@brand.com"
-            className="mt-2 h-14 w-full rounded-[14px] border border-zinc-300 px-4 text-[15px] outline-none focus:border-black" />
+
+          <label className="mt-5 block">
+            <span className="text-[13px] font-bold">
+              Email <span className="font-medium text-zinc-500">(optional)</span>
+            </span>
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              inputMode="email"
+              autoComplete="email"
+              placeholder="you@brand.com"
+              className="mt-2 h-14 w-full rounded-2xl border-2 border-black px-4 text-[17px] font-medium outline-none placeholder:text-zinc-400 focus:shadow-[3px_3px_0_#c2f23a]"
+            />
+          </label>
+
+          <label className="mt-5 flex items-start gap-3">
+            <input
+              type="checkbox"
+              checked={marketingSms}
+              onChange={(e) => setMarketingSms(e.target.checked)}
+              className="mt-1 h-5 w-5 shrink-0 accent-black"
+            />
+            <span className="text-[13px] font-medium leading-5 text-zinc-600">
+              Send me occasional DYE CUT LAB news, drops and promotional texts. Optional, and separate from project updates.
+            </span>
+          </label>
+
+          {error && (
+            <p role="alert" className="mt-5 rounded-2xl border-2 border-red-600 bg-red-50 px-4 py-3 text-[14px] font-bold text-red-700">
+              {error}
+            </p>
+          )}
+
+          <button
+            onClick={continueProject}
+            disabled={saving}
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-full border-2 border-black bg-[#c2f23a] py-4 text-[15px] font-extrabold transition hover:bg-black hover:text-[#c2f23a] disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Continue to DICI"} <span aria-hidden="true">→</span>
+          </button>
         </div>
 
-        <label className="mt-6 flex items-start gap-3">
-          <input type="checkbox" checked={marketingSms} onChange={(e) => setMarketingSms(e.target.checked)}
-            className="mt-1 h-4 w-4 accent-black" />
-          <span className="text-[11px] leading-4 text-zinc-500">
-            Send me occasional DYE CUT LAB news, drops and promotional texts. Consent is optional and separate from project updates.
-          </span>
-        </label>
-
-        {error && <p className="mt-5 text-[11px] text-red-500">{error}</p>}
-
-        <button onClick={continueProject} disabled={saving}
-          className="mt-8 flex w-full items-center justify-between rounded-full bg-black px-5 py-4 text-[11px] font-medium tracking-[0.08em] text-white disabled:opacity-50">
-          {saving ? "SAVING..." : "CONTINUE TO BABA"} <span className="text-lime-400">→</span>
-        </button>
-
-        <p className="mt-5 text-[9px] leading-4 text-zinc-400">
-          Project messages are transactional. Marketing texts are only enabled when you check the optional box above.
+        <p className="mt-5 text-[12px] font-medium leading-5 text-zinc-500">
+          Project messages are transactional. Marketing texts are only sent if you check the optional box above.
         </p>
       </section>
     </main>
@@ -803,13 +804,8 @@ function Conversation({
     question: string,
     current: ProjectData
   ): "product" | "quantity" | "flavors" | "artwork" | "reference" | "general" {
-    const value = question.toLowerCase();
-
-    if (value.includes("artwork") || value.includes("design")) return "artwork";
-    if (value.includes("flavor") || value.includes("flavour") || value.includes("strain")) return "flavors";
-    if (value.includes("unit") || value.includes("quantity") || value.includes("pieces")) return "quantity";
-    if (value.includes("reference") || value.includes("visual") || value.includes("image")) return "reference";
-    if (value.includes("packaging") || value.includes("pouch") || value.includes("box") || value.includes("jar")) return "product";
+    const fromWords = questionKindFromText(question);
+    if (fromWords) return fromWords;
 
     if (!current.productType) return "product";
     if (!current.units) return "quantity";
@@ -837,7 +833,7 @@ function Conversation({
 
     if (current.flavorCount > 0) {
       lines.push(
-        `FLAVORS · ${current.flavorCount} · ${current.flavorSplit.toLocaleString()} PCS EACH`
+        `DESIGNS · ${current.flavorCount} · ${current.flavorSplit.toLocaleString()} PCS EACH`
       );
     }
 
@@ -908,6 +904,15 @@ function Conversation({
       };
 
       setProject(created);
+
+      /* Tell the team once about the new project (text + email, sent by the
+         server). Fire and forget: a slow or failed alert never holds up or
+         changes anything for the customer. The server only alerts once per
+         project, whatever happens here. */
+      void fetch(`/api/projects/${encodeURIComponent(data.project_number)}/notify`, {
+        method: "POST",
+      }).catch((alertError) => console.error("TEAM ALERT ERROR:", alertError));
+
       return created;
     } catch (error) {
       console.error("PROJECT SAVE ERROR:", error);
@@ -993,7 +998,7 @@ function Conversation({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.error || "BABA could not process that message.");
+        throw new Error(data?.error || "DICI could not process that message.");
       }
 
       const baba = data as BabaApiResponse;
@@ -1106,7 +1111,7 @@ function Conversation({
       setProjectError(
         error instanceof Error
           ? error.message
-          : "BABA couldn't process that message."
+          : "DICI couldn't process that message."
       );
     } finally {
       setThinking(false);
@@ -1241,35 +1246,34 @@ function Conversation({
       : null;
 
   return (
-    <main className="flex min-h-screen flex-col bg-white text-black">
-      <header className="sticky top-0 z-20 border-b border-zinc-100 bg-white/95 px-5 pb-4 pt-5 backdrop-blur">
-        <div className="grid grid-cols-3 items-center">
+    <main className="flex min-h-screen flex-col bg-[#fafafa] text-black">
+      <header className="sticky top-0 z-20 border-b border-black/10 bg-white/95 backdrop-blur">
+        <div className="mx-auto grid w-full max-w-[720px] grid-cols-[48px_1fr_48px] items-center px-4 py-3">
           <button
             onClick={onBack}
-            className="justify-self-start text-xl"
+            className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-black text-[20px] font-bold leading-none transition hover:bg-[#c2f23a]"
             aria-label="Back"
           >
             ←
           </button>
 
           <div className="text-center">
-            <p className="text-[11px] font-semibold tracking-[0.08em]">
-              {project.projectNumber ?? "NEW PROJECT"}
+            <p className="text-[16px] font-extrabold tracking-[0.02em]">
+              {project.projectNumber ?? "New project"}
             </p>
-            <div className="mt-1 flex items-center justify-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-lime-400" />
-              <span className="text-[9px] text-zinc-500">BABA</span>
-              <span className="text-[9px] text-lime-500">
-                {thinking ? "THINKING" : "ONLINE"}
+            <div className="mt-0.5 inline-flex items-center gap-1.5 rounded-full bg-[#f1f8e0] px-2.5 py-0.5">
+              <span className={`h-2 w-2 rounded-full bg-[#c2f23a] ${thinking ? "animate-pulse" : ""}`} />
+              <span className="text-[11px] font-bold text-[#3f6f00]">
+                DICI · {thinking ? "thinking" : "online"}
               </span>
             </div>
           </div>
 
-          <span className="justify-self-end text-xl">···</span>
+          <span />
         </div>
       </header>
 
-      <section className="flex-1 px-5 pb-52 pt-8">
+      <section className="mx-auto w-full max-w-[720px] flex-1 px-4 pb-56 pt-6">
         {messages.map((message) =>
           message.role === "customer" ? (
             <CustomerAnswer key={message.id}>{message.text}</CustomerAnswer>
@@ -1277,14 +1281,28 @@ function Conversation({
             <BabaMessage key={message.id}>
               {message.kind === "summary" ? (
                 <div>
-                  <p className="mb-3">Got it. I picked up:</p>
+                  <p className="mb-3 font-bold">Got it. Here&apos;s what I picked up:</p>
 
-                  <div className="space-y-1 whitespace-pre-line text-[12px] text-zinc-500">
-                    {message.text}
-                  </div>
+                  <dl className="grid grid-cols-2 gap-2">
+                    {summaryRows(message.text).map((row, index) => (
+                      <div
+                        key={`${row.label}-${index}`}
+                        className="rounded-2xl bg-white/80 px-3 py-2"
+                      >
+                        {row.label && (
+                          <dt className="text-[10px] font-bold tracking-[0.1em] text-zinc-500">
+                            {row.label}
+                          </dt>
+                        )}
+                        <dd className="text-[15px] font-extrabold leading-tight">
+                          {row.value}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
 
                   {unitConversion && (
-                    <p className="mt-3 text-[12px] text-lime-500">
+                    <p className="mt-3 inline-block rounded-full bg-black px-3 py-1.5 text-[11px] font-bold tracking-[0.04em] text-[#c2f23a]">
                       {unitConversion.units.toLocaleString()} UNITS × {PIECES_PER_UNIT} PCS ={" "}
                       {unitConversion.rawPieces.toLocaleString()} PCS
                       {unitConversion.orderPieces
@@ -1302,7 +1320,7 @@ function Conversation({
 
         {thinking && (
           <BabaMessage>
-            <SystemLine text="BABA IS READING YOUR PROJECT..." />
+            <SystemLine text="DICI IS READING YOUR PROJECT..." />
           </BabaMessage>
         )}
 
@@ -1321,13 +1339,13 @@ function Conversation({
         )}
 
         {!thinking && step === "ai" && questionKind === "quantity" && (
-          <div className="ml-10 mt-4 flex flex-wrap gap-2">
+          <div className="ml-12 mt-4 flex flex-wrap gap-2">
             {[1, 5, 10, 20, 50].map((units) => (
               <button
                 key={units}
                 disabled={saving}
                 onClick={() => sendQuickAnswer(`${units} units`)}
-                className="rounded-full border border-zinc-300 px-4 py-3 text-[10px] font-medium tracking-[0.05em] disabled:opacity-40"
+                className={CHIP}
               >
                 {units} UNITS
               </button>
@@ -1336,19 +1354,19 @@ function Conversation({
         )}
 
         {!thinking && step === "ai" && questionKind === "flavors" && (
-          <div className="ml-10 mt-4 flex flex-wrap gap-2">
+          <div className="ml-12 mt-4 flex flex-wrap gap-2">
             {[1, 2, 3, 4, 5, 6, 8].map((count) => (
               <button
                 key={count}
                 disabled={saving}
                 onClick={() =>
                   sendQuickAnswer(
-                    count === 1 ? "One flavor" : `${count} flavors`
+                    count === 1 ? "One design" : `${count} designs`
                   )
                 }
-                className="rounded-full border border-zinc-300 px-5 py-3 text-[10px] font-medium tracking-[0.06em] disabled:opacity-40"
+                className={CHIP}
               >
-                {count === 1 ? "ONE FLAVOR" : `${count} FLAVORS`}
+                {count === 1 ? "ONE DESIGN" : `${count} DESIGNS`}
               </button>
             ))}
           </div>
@@ -1371,17 +1389,17 @@ function Conversation({
         )}
 
         {!thinking && step === "ai" && questionKind === "reference" && (
-          <div className="ml-10 mt-4 flex flex-wrap gap-2">
+          <div className="ml-12 mt-4 flex flex-wrap gap-2">
             <button
               onClick={() => fileInput.current?.click()}
-              className="rounded-full border border-zinc-300 px-5 py-3 text-[10px] font-medium tracking-[0.06em]"
+              className={CHIP}
             >
               + ADD REFERENCE
             </button>
 
             <button
               onClick={skipReference}
-              className="rounded-full border border-zinc-300 px-5 py-3 text-[10px] font-medium tracking-[0.06em]"
+              className={CHIP}
             >
               SKIP FOR NOW
             </button>
@@ -1398,17 +1416,17 @@ function Conversation({
 
         {referenceImage && (
           <div className="mt-6 flex justify-end">
-            <div className="w-[68%] overflow-hidden rounded-[18px] rounded-br-[5px] bg-zinc-100">
+            <div className="w-[68%] max-w-[300px] overflow-hidden rounded-[22px] rounded-br-[4px] border-2 border-black bg-white">
               <img
                 src={referenceImage}
                 alt="Customer reference"
                 className="aspect-square w-full object-cover"
               />
               <div className="flex items-center justify-between px-3 py-2">
-                <span className="text-[9px] tracking-wide text-zinc-500">
+                <span className="text-[11px] font-bold tracking-[0.08em] text-zinc-600">
                   REFERENCE
                 </span>
-                <span className="text-[9px] text-lime-500">✓ UPLOADED</span>
+                <span className="rounded-full bg-[#c2f23a] px-2 py-0.5 text-[10px] font-extrabold">✓ UPLOADED</span>
               </div>
             </div>
           </div>
@@ -1427,23 +1445,23 @@ function Conversation({
         )}
 
         {step === "complete" && project.projectNumber && (
-          <div className="ml-10 mt-5 rounded-[18px] border border-zinc-200 p-4">
+          <div className="ml-12 mt-5 rounded-[24px] border-2 border-black bg-white p-5">
             <div className="flex items-center justify-between">
-              <span className="text-[9px] font-medium tracking-[0.1em] text-lime-500">
+              <span className="rounded-full bg-[#c2f23a] px-3 py-1 text-[11px] font-extrabold tracking-[0.08em]">
                 PROJECT CREATED
               </span>
-              <span className="h-2 w-2 rounded-full bg-lime-400" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[#c2f23a] ring-2 ring-black" />
             </div>
 
-            <p className="mt-4 text-[26px] font-medium tracking-[-0.04em]">
+            <p className="mt-4 text-[30px] font-black leading-none tracking-[-0.03em]">
               {project.projectNumber}
             </p>
 
-            <p className="mt-1 text-[12px] text-zinc-500">
+            <p className="mt-1.5 text-[13px] font-bold tracking-[0.04em] text-zinc-500">
               {(project.productType || "CUSTOM PACKAGING").toUpperCase()}
             </p>
 
-            <div className="mt-5 grid grid-cols-2 gap-y-4 border-t border-zinc-100 pt-4">
+            <div className="mt-5 grid grid-cols-2 gap-3 border-t border-black/10 pt-4">
               <Spec
                 label="UNITS"
                 value={project.units ? project.units.toLocaleString() : "TBD"}
@@ -1457,7 +1475,7 @@ function Conversation({
                 }
               />
               <Spec
-                label="FLAVORS"
+                label="DESIGNS"
                 value={
                   project.flavorCount > 0
                     ? `${project.flavorCount} × ${project.flavorSplit.toLocaleString()} PCS`
@@ -1482,31 +1500,41 @@ function Conversation({
 
             <button
               onClick={onViewProject}
-              className="mt-6 w-full rounded-full bg-black py-4 text-[11px] font-medium tracking-[0.08em] text-white"
+              className="mt-6 w-full rounded-full border-2 border-black bg-[#c2f23a] py-4 text-[13px] font-extrabold tracking-[0.06em] text-black transition hover:bg-black hover:text-[#c2f23a]"
             >
-              VIEW PROJECT <span className="ml-3 text-lime-400">→</span>
+              VIEW PROJECT <span className="ml-2">→</span>
             </button>
           </div>
         )}
 
-        <div className="ml-10 mt-6 text-[9px] tracking-[0.08em] text-zinc-400">
-          BRIEF {detailCount}/5
+        <div className="ml-12 mt-6 flex items-center gap-3" aria-label={`Brief ${detailCount} of 5`}>
+          <div className="flex gap-1.5">
+            {[0, 1, 2, 3, 4].map((index) => (
+              <span
+                key={index}
+                className={`h-2 w-7 rounded-full ${index < detailCount ? "bg-[#c2f23a] ring-1 ring-black" : "bg-zinc-200"}`}
+              />
+            ))}
+          </div>
+          <span className="text-[11px] font-bold tracking-[0.08em] text-zinc-500">
+            BRIEF {detailCount}/5
+          </span>
         </div>
 
         <div ref={bottomRef} />
       </section>
 
-      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-zinc-100 bg-white px-4 pb-7 pt-3">
-        <div className="mx-auto flex max-w-[500px] items-center gap-2">
+      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-black/10 bg-white/95 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+        <div className="mx-auto flex max-w-[720px] items-center gap-2">
           <button
             onClick={() => fileInput.current?.click()}
             aria-label="Attach file"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-zinc-200 text-lg"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-black text-[22px] font-bold leading-none transition hover:bg-[#c2f23a]"
           >
             +
           </button>
 
-          <div className="flex flex-1 items-center rounded-full border border-zinc-300 px-4">
+          <div className="flex flex-1 items-center rounded-full border-2 border-black bg-white pl-4 pr-1.5 focus-within:shadow-[3px_3px_0_#c2f23a]">
             <input
               value={input}
               onChange={(event) => setInput(event.target.value)}
@@ -1517,20 +1545,20 @@ function Conversation({
                 step === "complete"
                   ? "Project brief started"
                   : thinking
-                  ? "BABA is thinking..."
+                  ? "DICI is thinking..."
                   : nextQuestion
-                  ? "Message BABA..."
-                  : "Tell BABA more..."
+                  ? "Message DICI..."
+                  : "Tell DICI more..."
               }
               disabled={step === "complete" || thinking || saving}
-              className="h-12 flex-1 bg-transparent text-[14px] outline-none placeholder:text-zinc-400 disabled:opacity-50"
+              className="h-12 flex-1 bg-transparent text-[16px] outline-none placeholder:text-zinc-500 disabled:opacity-50"
             />
 
             <button
               onClick={sendTypedMessage}
               disabled={!input.trim() || thinking || saving || step === "complete"}
               aria-label="Send message"
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-black text-lime-400 disabled:opacity-30"
+              className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-black bg-[#c2f23a] text-[20px] font-bold leading-none text-black disabled:border-zinc-300 disabled:bg-zinc-200 disabled:text-white"
             >
               ↑
             </button>
@@ -1544,12 +1572,16 @@ function Conversation({
 function CustomerAnswer({ children }: { children: React.ReactNode }) {
   return (
     <div className="mt-5 flex justify-end">
-      <div className="max-w-[82%] rounded-[18px] rounded-br-[5px] bg-black px-4 py-3 text-white">
-        <p className="text-[14px] leading-5">{children}</p>
+      <div className="max-w-[82%] rounded-[22px] rounded-br-[4px] bg-black px-5 py-3.5 text-white">
+        <p className="text-[16px] font-medium leading-6">{children}</p>
       </div>
     </div>
   );
 }
+
+/* One look for every quick answer under DICI's question. */
+const CHIP =
+  "rounded-full border-2 border-black bg-white px-4 py-2.5 text-[12px] font-bold tracking-[0.04em] transition hover:bg-[#c2f23a] disabled:opacity-40";
 
 function QuickOptions({
   options,
@@ -1561,13 +1593,13 @@ function QuickOptions({
   disabled?: boolean;
 }) {
   return (
-    <div className="ml-10 mt-4 flex flex-wrap gap-2">
+    <div className="ml-12 mt-4 flex flex-wrap gap-2">
       {options.map((option) => (
         <button
           key={option}
           disabled={disabled}
           onClick={() => onSelect(option)}
-          className="rounded-full border border-zinc-300 px-4 py-3 text-[10px] font-medium tracking-[0.05em] disabled:opacity-40"
+          className={CHIP}
         >
           {option}
         </button>
@@ -1577,189 +1609,15 @@ function QuickOptions({
 }
 
 /* =========================================================
-   PROJECT DASHBOARD
-========================================================= */
-
-function Project({
-  project,
-  referenceImage,
-  onBack,
-  onContinue,
-}: {
-  project: ProjectData;
-  referenceImage: string | null;
-  onBack: () => void;
-  onContinue: () => void;
-}) {
-  const knownDetails = [
-    project.productType,
-    project.quantity,
-    project.useType,
-    project.artworkStatus,
-    project.size,
-    project.closure,
-  ].filter(Boolean).length;
-
-  const missingDetails = [
-    !project.size && "size",
-    !project.closure && "closure",
-    !referenceImage && "reference",
-  ].filter(Boolean).length;
-
-  return (
-    <main className="min-h-screen bg-white pb-24 text-black">
-      <header className="flex items-center justify-between px-5 py-5">
-        <button onClick={onBack} className="flex h-10 w-10 items-center justify-start text-xl" aria-label="Back">
-          ←
-        </button>
-        <span className="text-xl">···</span>
-      </header>
-
-      <section className="px-5 pt-3">
-        <p className="text-[9px] font-medium tracking-[0.12em] text-zinc-400">PROJECT</p>
-        <h1 className="mt-2 text-[38px] font-medium leading-none tracking-[-0.055em]">
-          {project.projectNumber ?? "PROJECT"}
-        </h1>
-        <p className="mt-2 text-[13px] text-zinc-500">
-          {project.productType || "Custom Packaging Project"}
-        </p>
-
-        <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-zinc-200 px-3 py-2 text-[9px] font-medium tracking-[0.05em]">
-          <span className="h-2 w-2 rounded-full bg-lime-400" />
-          DEVELOPMENT
-        </div>
-
-        <div className="mt-7 overflow-hidden rounded-[18px] bg-zinc-100">
-          {referenceImage ? (
-            <img src={referenceImage} alt="Project reference" className="aspect-[4/3] w-full object-cover" />
-          ) : (
-            <div className="flex aspect-[4/3] items-center justify-center">
-              <span className="text-[9px] tracking-[0.1em] text-zinc-400">PROJECT REFERENCE</span>
-            </div>
-          )}
-        </div>
-
-        <div className="mt-5 rounded-[18px] bg-black p-5 text-white">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-lime-400" />
-            <p className="text-[9px] font-medium tracking-[0.12em] text-lime-400">NEXT ACTION</p>
-          </div>
-
-          <h2 className="mt-4 text-[22px] font-medium leading-tight tracking-[-0.035em]">
-            COMPLETE PROJECT
-            <br />
-            DETAILS
-          </h2>
-
-          <p className="mt-3 max-w-[290px] text-[12px] leading-5 text-zinc-400">
-            {missingDetails > 0
-              ? `BABA needs ${missingDetails} more ${missingDetails === 1 ? "detail" : "details"} before we can prepare your quote.`
-              : "Your core project details are ready for quote preparation."}
-          </p>
-
-          <button
-            onClick={onContinue}
-            className="mt-5 flex w-full items-center justify-between rounded-full bg-white px-5 py-4 text-[10px] font-medium tracking-[0.06em] text-black"
-          >
-            CONTINUE WITH BABA
-            <span>→</span>
-          </button>
-        </div>
-
-        <div className="mt-10">
-          <div className="flex items-center justify-between">
-            <p className="text-[9px] font-medium tracking-[0.12em] text-zinc-400">PROJECT PROGRESS</p>
-            <p className="text-[9px] text-zinc-400">1 OF 5</p>
-          </div>
-
-          <div className="mt-4 h-[3px] overflow-hidden rounded-full bg-zinc-100">
-            <div className="h-full w-[20%] bg-lime-400" />
-          </div>
-
-          <div className="mt-6">
-            <CompactProjectStep number="01" title="DEVELOP" status="IN PROGRESS" active />
-            <CompactProjectStep number="02" title="QUOTE" status="PENDING" />
-            <CompactProjectStep number="03" title="SAMPLE" status="PENDING" />
-            <CompactProjectStep number="04" title="PRODUCE" status="PENDING" />
-            <CompactProjectStep number="05" title="DELIVER" status="PENDING" />
-          </div>
-        </div>
-
-        <div className="mt-10 border-t border-zinc-200">
-          <ProjectLink title="DETAILS" value={String(knownDetails)} />
-          <ProjectLink title="FILES" value={referenceImage ? "1" : "0"} />
-          <ProjectLink title="MESSAGES" />
-          <ProjectLink title="QUOTE" value="PENDING" />
-          <ProjectLink title="ACTIVITY" />
-        </div>
-
-        <div className="mt-12">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[9px] font-medium tracking-[0.12em] text-zinc-400">LAB CAM</p>
-              <p className="mt-1 text-[11px]">CAM_03 / GUANGDONG, CN</p>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-lime-400" />
-              <span className="text-[9px] font-medium text-lime-500">LIVE</span>
-            </div>
-          </div>
-
-          <div className="relative mt-4 aspect-video overflow-hidden rounded-[16px] bg-black text-white">
-            <div className="absolute left-4 top-4 text-[8px] tracking-[0.1em] text-zinc-500">DCL_CAM03</div>
-            <div className="absolute right-4 top-4 text-[8px] text-lime-400">● REC</div>
-            <div className="flex h-full items-center justify-center">
-              <span className="text-[9px] tracking-[0.12em] text-zinc-700">FACTORY FEED</span>
-            </div>
-            <div className="absolute bottom-4 left-4 right-4 flex justify-between text-[8px] text-zinc-600">
-              <span>GUANGDONG / CN</span>
-              <span>CAM_03</span>
-            </div>
-          </div>
-
-          <button className="mt-4 flex w-full items-center justify-between rounded-full border border-zinc-300 px-5 py-4 text-[10px] font-medium tracking-[0.06em]">
-            CHECK THE LAB
-            <span>→</span>
-          </button>
-        </div>
-
-        <div className="mt-12 border-t border-zinc-200 py-8">
-          <div className="flex items-center gap-3">
-            <BabaAvatar />
-            <div>
-              <p className="text-[11px] font-medium">BABA</p>
-              <div className="mt-1 flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-lime-400" />
-                <span className="text-[9px] text-zinc-400">YOUR PRODUCTION ASSISTANT</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
-  );
-}
-
-/* =========================================================
    SHARED COMPONENTS
 ========================================================= */
 
-function Logo() {
-  return (
-    <div className="text-[20px] font-black leading-[0.8] tracking-[-0.06em]">
-      DYE CUT
-      <br />
-      LAB
-    </div>
-  );
-}
-
 function BabaStatus() {
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 px-3 py-2 text-[10px]">
-      <span className="h-2 w-2 rounded-full bg-lime-400" />
+    <div className="inline-flex items-center gap-2 rounded-full border-2 border-black bg-[#f1f8e0] px-3 py-1.5 text-[11px] font-bold">
+      <span className="h-2 w-2 rounded-full bg-[#c2f23a] ring-1 ring-black" />
 
-      <span>BABA</span>
+      <span>DICI</span>
 
       <span className="text-zinc-300">
         ●
@@ -1774,10 +1632,10 @@ function BabaStatus() {
 
 function BabaAvatar() {
   return (
-    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-black">
-      <div className="flex gap-[3px]">
-        <span className="h-1.5 w-1.5 rounded-full bg-lime-400" />
-        <span className="h-1.5 w-1.5 rounded-full bg-lime-400" />
+    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] bg-black">
+      <div className="flex gap-[4px]">
+        <span className="h-2 w-2 rounded-full bg-[#c2f23a]" />
+        <span className="h-2 w-2 rounded-full bg-[#c2f23a]" />
       </div>
     </div>
   );
@@ -1789,10 +1647,10 @@ function BabaMessage({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mt-6 flex items-end gap-2">
+    <div className="mt-6 flex items-end gap-2.5">
       <BabaAvatar />
 
-      <div className="max-w-[82%] rounded-[18px] rounded-bl-[5px] bg-zinc-100 px-4 py-3 text-[14px] leading-5">
+      <div className="max-w-[84%] rounded-[22px] rounded-bl-[4px] border-2 border-black bg-[#f1f8e0] px-5 py-3.5 text-[16px] font-medium leading-6">
         {children}
       </div>
     </div>
@@ -1805,8 +1663,8 @@ function SystemLine({
   text: string;
 }) {
   return (
-    <div className="mt-2 flex items-center gap-2 text-[9px] tracking-[0.08em] text-zinc-500">
-      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-lime-400" />
+    <div className="flex items-center gap-2 text-[11px] font-bold tracking-[0.08em] text-zinc-600">
+      <span className="h-2 w-2 animate-pulse rounded-full bg-[#c2f23a] ring-1 ring-black" />
       {text}
     </div>
   );
@@ -1823,117 +1681,19 @@ function Spec({
 }) {
   return (
     <div>
-      <p className="text-[8px] tracking-[0.1em] text-zinc-400">
+      <p className="text-[10px] font-bold tracking-[0.1em] text-zinc-500">
         {label}
       </p>
 
       <p
-        className={`mt-1 text-[10px] font-medium ${
+        className={`mt-1 text-[14px] font-extrabold ${
           active
-            ? "text-lime-500"
+            ? "text-[#3f6f00]"
             : "text-black"
         }`}
       >
         {value}
       </p>
     </div>
-  );
-}
-
-function ProcessStep({
-  number,
-  title,
-  description,
-}: {
-  number: string;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="grid grid-cols-[38px_1fr] border-t border-zinc-200 pt-5">
-      <span className="text-[10px] text-zinc-400">
-        {number}
-      </span>
-
-      <div>
-        <h3 className="text-[13px] font-semibold">
-          {title}
-        </h3>
-
-        <p className="mt-1 text-[13px] text-zinc-500">
-          {description}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function CompactProjectStep({
-  number,
-  title,
-  status,
-  active = false,
-}: {
-  number: string;
-  title: string;
-  status: string;
-  active?: boolean;
-}) {
-  return (
-    <div className="grid grid-cols-[32px_1fr_auto] items-center border-b border-zinc-100 py-4">
-      <span className="text-[9px] text-zinc-400">
-        {number}
-      </span>
-
-      <div className="flex items-center gap-3">
-        <p className="text-[11px] font-medium">
-          {title}
-        </p>
-
-        <span
-          className={`text-[8px] ${
-            active
-              ? "text-lime-500"
-              : "text-zinc-400"
-          }`}
-        >
-          {status}
-        </span>
-      </div>
-
-      <div
-        className={`h-3 w-3 rounded-full ${
-          active
-            ? "bg-lime-400"
-            : "border border-zinc-300"
-        }`}
-      />
-    </div>
-  );
-}
-
-function ProjectLink({
-  title,
-  value,
-}: {
-  title: string;
-  value?: string;
-}) {
-  return (
-    <button className="flex w-full items-center justify-between border-b border-zinc-200 py-5">
-      <span className="text-[12px] font-medium">
-        {title}
-      </span>
-
-      <div className="flex items-center gap-3">
-        {value && (
-          <span className="text-[9px] text-zinc-400">
-            {value}
-          </span>
-        )}
-
-        <span>›</span>
-      </div>
-    </button>
   );
 }

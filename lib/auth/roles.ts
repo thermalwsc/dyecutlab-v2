@@ -71,7 +71,7 @@ export function isPathAllowedForRole(role: AppRole, path: string): boolean {
   return path.startsWith(`${home}/`) || path.startsWith(`${home}?`);
 }
 
-/* Only our own pages: "/account", "/start?x=1" — never "//evil.com". */
+/* Only our own pages: "/account", "/app?x=1" — never "//evil.com". */
 export function safeInternalPath(value: string | null | undefined): string | null {
   if (!value) return null;
   if (!value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) return null;

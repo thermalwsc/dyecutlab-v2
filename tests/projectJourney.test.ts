@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { JOURNEY_STEPS, REQUEST_STEPS, customerStatusLabel, journeyStepIndex, nextStepFor, requestInfoFor } from "../lib/projectJourney.ts";
 import { PROJECT_STATUSES } from "../app/admin/statuses.ts";
+import { ESTIMATES_IN_APP, PROOFS_IN_APP } from "../lib/siteFlags.ts";
 
 test("every project status belongs to exactly one customer step", () => {
   for (const status of PROJECT_STATUSES) {
@@ -46,10 +47,25 @@ test("unknown or empty stages still read sensibly for a customer", () => {
   assert.equal(customerStatusLabel("legacy_value"), "Legacy value");
 });
 
-test("the customer only has something to do at the estimate and the proof", () => {
+test("no stage offers a button for something that does not exist in the app yet", () => {
+  /* While estimates and proofs are sent by text (lib/siteFlags.ts), the customer
+     is not asked to open anything. Flip ESTIMATES_IN_APP / PROOFS_IN_APP when the
+     views are built and this expectation changes with them. */
   const action = PROJECT_STATUSES.filter((s) => nextStepFor(s).tone === "action");
-  assert.deepEqual(action, ["quote_ready", "proof"]);
+  const expected = [ESTIMATES_IN_APP ? "quote_ready" : null, PROOFS_IN_APP ? "proof" : null].filter(Boolean);
+  assert.deepEqual(action, expected);
   for (const status of action) assert.ok(nextStepFor(status).cta, `${status} needs a button label`);
+});
+
+test("while estimates and proofs go out by text, those stages say so", () => {
+  if (!ESTIMATES_IN_APP) {
+    assert.match(nextStepFor("quote_ready").detail, /by text/);
+    assert.equal(nextStepFor("quote_ready").cta, undefined);
+  }
+  if (!PROOFS_IN_APP) {
+    assert.match(nextStepFor("proof").detail, /by text/);
+    assert.equal(nextStepFor("proof").cta, undefined);
+  }
 });
 
 test("every real status has its own message, not the generic fallback", () => {

@@ -30,7 +30,7 @@ export async function getServerSupabase() {
   );
 }
 
-/* Only allow redirects back to our own pages ("/account", "/start?x=1"),
+/* Only allow redirects back to our own pages ("/account", "/app?x=1"),
    never to another site — the `next` value comes from the URL. */
 export function safeNextPath(value: string | null | undefined, fallback = "/account") {
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) {

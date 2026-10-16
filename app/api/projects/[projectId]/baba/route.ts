@@ -225,7 +225,7 @@ export async function POST(
       return NextResponse.json(
         {
           error:
-            "Project files could not be loaded for BABA.",
+            "Project files could not be loaded for DICI.",
 
         },
         {
@@ -299,7 +299,7 @@ export async function POST(
       return NextResponse.json(
         {
           error:
-            "File Intelligence could not be loaded for BABA.",
+            "File Intelligence could not be loaded for DICI.",
 
         },
         {
@@ -419,7 +419,7 @@ export async function POST(
               "system",
 
             content: `
-You are BABA, the intelligent packaging project assistant for DYE CUT LAB.
+You are DICI, the intelligent packaging project assistant for DYE CUT LAB.
 
 You are assisting with an EXISTING packaging project.
 
@@ -591,7 +591,7 @@ You can currently:
 
 You cannot currently:
 
-- perform a new file analysis from this BABA conversation
+- perform a new file analysis from this DICI conversation
 - perform a full production preflight
 - inspect vector layers
 - inspect PSD layers
@@ -687,7 +687,7 @@ Number of order units requested by the customer.
 Must be a positive integer.
 
 flavor_count:
-Number of flavors or product variants.
+Number of designs or flavors (product variants). Customers may say flavors, designs, variants, versions, strains or SKUs; they all mean this field. Call it "designs or flavors" when you talk to the customer.
 Must be a positive integer.
 
 pouch_size:
@@ -808,7 +808,7 @@ Keep the reply to 2 or 3 short sentences. Only go longer if the customer asks fo
 
 Write like a helpful person texting a customer, in plain words.
 
-Never show field names or internal terms such as artwork_status, flavor_count, box_dimensions, "status: lead" or "request text". Say "artwork", "number of flavors", "box size" instead.
+Never show field names or internal terms such as artwork_status, flavor_count, box_dimensions, "status: lead" or "request text". Say "artwork", "number of designs or flavors", "box size" instead.
 
 Ask for at most one or two missing details at a time, the most important ones first. Never repeat the full checklist of everything missing.
 
@@ -1163,7 +1163,7 @@ Return a short natural reply that directly addresses the customer's newest messa
       return NextResponse.json(
         {
           error:
-            "BABA understood the change but could not save it.",
+            "DICI understood the change but could not save it.",
 
         },
         {
@@ -1267,7 +1267,7 @@ Return a short natural reply that directly addresses the customer's newest messa
 
     return NextResponse.json(
       {
-        error: "BABA could not process the project update.",
+        error: "DICI could not process the project update.",
       },
       {
         status: 500,

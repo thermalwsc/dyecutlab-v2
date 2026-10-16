@@ -21,6 +21,11 @@ export default async function SignInPage({ searchParams }: Params) {
   const one = (key: string) => (typeof params[key] === "string" ? (params[key] as string) : null);
   const next = safeNextPath(one("next"));
 
+  /* Someone who tapped "Start your project" is sent here first (the chat needs
+     an account so the project, files and conversation are theirs). Say so, in
+     plain words, instead of the generic welcome. */
+  const startingProject = next === "/app" || next.startsWith("/app?");
+
   /* Already signed in with an active account → straight to their own area
      (/account, /admin or /factory). A disabled or banned account stays on this
      page with an explanation from the card instead of bouncing back and forth
@@ -41,22 +46,39 @@ export default async function SignInPage({ searchParams }: Params) {
           <div className="min-w-0 lg:pl-[8%]">
             <p className="inline-flex items-center gap-2 rounded-full border-2 border-black bg-white px-4 py-1.5 text-[13px] font-extrabold">
               <span className="h-2.5 w-2.5 rounded-full bg-[var(--dcl-lime)] ring-2 ring-[var(--dcl-lime-deep)]/30" />
-              Your account
+              {startingProject ? "Start your project" : "Your account"}
             </p>
             <h1 className="dcl-rise mt-4 text-[clamp(38px,10vw,76px)] font-black leading-[1.02] tracking-[-0.045em] lg:text-[min(5.4vw,84px)]">
-              <span className="whitespace-nowrap">Welcome to</span>
-              <br />
-              the{" "}
-              <span className="relative inline-block whitespace-nowrap">
-                <span className="relative z-10 inline-block -rotate-2 rounded-[0.35em] bg-[var(--dcl-lime)] px-[0.16em] pb-[0.05em]">
-                  lab.
-                </span>
-                <Burst className="absolute -right-[0.62em] top-[0.02em] h-[0.5em] w-[0.5em] text-[var(--dcl-lime-deep)]" />
-              </span>
+              {startingProject ? (
+                <>
+                  <span className="whitespace-nowrap">Let&apos;s start</span>
+                  <br />
+                  your{" "}
+                  <span className="relative inline-block whitespace-nowrap">
+                    <span className="relative z-10 inline-block -rotate-2 rounded-[0.35em] bg-[var(--dcl-lime)] px-[0.16em] pb-[0.05em]">
+                      project.
+                    </span>
+                    <Burst className="absolute -right-[0.62em] top-[0.02em] h-[0.5em] w-[0.5em] text-[var(--dcl-lime-deep)]" />
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="whitespace-nowrap">Welcome to</span>
+                  <br />
+                  the{" "}
+                  <span className="relative inline-block whitespace-nowrap">
+                    <span className="relative z-10 inline-block -rotate-2 rounded-[0.35em] bg-[var(--dcl-lime)] px-[0.16em] pb-[0.05em]">
+                      lab.
+                    </span>
+                    <Burst className="absolute -right-[0.62em] top-[0.02em] h-[0.5em] w-[0.5em] text-[var(--dcl-lime-deep)]" />
+                  </span>
+                </>
+              )}
             </h1>
             <p className="mt-5 max-w-[34ch] text-[clamp(15px,4.2vw,21px)] font-semibold leading-snug text-zinc-800">
-              Sign in with your email and password, or with Google — your projects, quotes and orders stay in
-              one place.
+              {startingProject
+                ? "Create your free account, or sign in, to start. It takes a few seconds, and Google works too. Your project, files and chat with DICI stay in your account."
+                : "Sign in with your email and password, or with Google — your projects, quotes and orders stay in one place."}
             </p>
 
             <Benefits />

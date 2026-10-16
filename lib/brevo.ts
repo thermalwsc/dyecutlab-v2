@@ -19,6 +19,7 @@
 */
 
 import { type ChannelResult, errorMessage } from "./channels";
+import { type NewProjectAlert, buildProjectAlertEmail } from "./projectAlert";
 import { CONTACT } from "./contact";
 
 const BREVO_API_BASE = "https://api.brevo.com/v3";
@@ -361,6 +362,57 @@ export async function sendStaffSignupEmail(input: {
     return { status: "sent" };
   } catch (error) {
     console.error("BREVO STAFF SIGNUP EMAIL ERROR:", error);
+    return { status: "failed", detail: errorMessage(error) };
+  }
+}
+
+/* Team alert when a customer's chat creates a project. Email is the record; the
+   matching text is in lib/sendblue.ts. Everything the customer typed is escaped. */
+export async function sendStaffProjectEmail(input: NewProjectAlert): Promise<ChannelResult> {
+  const { apiKey, senderEmail, senderName } = getEmailConfig();
+  const { email: staffEmail } = getStaffDestinations();
+
+  if (!apiKey) {
+    return { status: "skipped", detail: "BREVO_API_KEY is not configured." };
+  }
+
+  if (!senderEmail) {
+    return {
+      status: "skipped",
+      detail: "BREVO_SENDER_EMAIL is not configured.",
+    };
+  }
+
+  const alert = buildProjectAlertEmail(input);
+  const rows = [
+    alert.title ? `<p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#71717a;">PROJECT</p><p style="margin:0 0 18px;padding:14px 16px;border-radius:14px;background:#f2fadf;font-size:15px;line-height:22px;">${escapeHtml(alert.projectNumber)} · ${escapeHtml(alert.title)}${alert.size ? ` · ${escapeHtml(alert.size)}` : ""}</p>` : "",
+    alert.request ? `<p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#71717a;">THEIR FIRST MESSAGE</p><p style="margin:0 0 18px;font-size:15px;line-height:22px;">${escapeHtml(alert.request)}</p>` : "",
+  ].join("");
+  const contact = [alert.email, alert.phone].filter(Boolean).map(escapeHtml).join(" · ");
+
+  try {
+    await brevoPost("/smtp/email", apiKey, {
+      sender: { name: senderName, email: senderEmail },
+      to: [{ email: staffEmail }],
+      subject: alert.subject,
+      htmlContent: `<!doctype html>
+<html lang="en">
+  <body style="margin:0;padding:24px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#0a0a0a;">
+    <p style="margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:0.12em;color:#65a30d;">HI ${escapeHtml(CONTACT.personName.toUpperCase())} — NEW PROJECT FROM THE CHAT</p>
+    <p style="margin:0 0 ${contact ? "8px" : "18px"};font-size:24px;font-weight:900;">${escapeHtml(alert.who)}</p>
+    ${contact ? `<p style="margin:0 0 18px;font-size:15px;">${contact}</p>` : ""}
+    ${rows}
+    <p style="margin:0;font-size:14px;"><a href="${escapeHtml(alert.projectUrl)}" style="color:#0a0a0a;font-weight:700;">Open it in the team workspace</a></p>
+    <p style="margin:18px 0 0;font-size:11px;color:#a1a1aa;">The customer can keep chatting with DICI; the whole conversation is saved on the project.</p>
+  </body>
+</html>`,
+      textContent: `Hi ${CONTACT.personName} — new project from the chat\n\n${alert.who}${contact ? `\n${[alert.email, alert.phone].filter(Boolean).join(" · ")}` : ""}\n\n${alert.projectNumber}${alert.title ? ` · ${alert.title}` : ""}${alert.size ? ` · ${alert.size}` : ""}\n${alert.request ? `\nTheir first message:\n${alert.request}\n` : ""}\nOpen it: ${alert.projectUrl}\n\nThe whole conversation is saved on the project.`,
+      tags: ["new_project_staff"],
+    });
+
+    return { status: "sent" };
+  } catch (error) {
+    console.error("BREVO NEW PROJECT EMAIL ERROR:", error);
     return { status: "failed", detail: errorMessage(error) };
   }
 }

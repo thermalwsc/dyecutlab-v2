@@ -1,5 +1,6 @@
 import { FIELD, LABEL, TEXTAREA } from "../ui";
 import { PROJECT_STATUSES, PROJECT_STATUS_LABELS } from "../statuses";
+import { customerStatusLabel } from "../../../lib/projectJourney";
 
 /* Fields shared by "new project" and "edit project". Server component: plain
    inputs inside a server-action form. */
@@ -38,7 +39,7 @@ export default function ProjectFields({ values = {} }: { values?: ProjectValues 
           {!known && <option value="">Keep “{status}”</option>}
           {PROJECT_STATUSES.map((s) => (
             <option key={s} value={s}>
-              {PROJECT_STATUS_LABELS[s]}
+              {PROJECT_STATUS_LABELS[s]} (customer sees: {customerStatusLabel(s)})
             </option>
           ))}
         </select>
