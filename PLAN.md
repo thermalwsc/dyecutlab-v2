@@ -2,7 +2,7 @@
 
 Custom packaging made simple. A customer describes an idea, DCL turns it into a factory-ready specification, a verified quote, payment, proof, production and delivery. This file is the engineering view of the 12-week plan the client sees (`F:\DYECUTLAB-Work\12-Week-Plan\index.html`). The task log is `F:\DYECUTLAB-Work\TaskLogHTML\index.html`.
 
-Last updated: Thu, Oct 15, 2026 (week 3).
+Last updated: Fri, Oct 16, 2026 (week 3).
 
 ---
 
@@ -81,8 +81,8 @@ Weeks are 25 h each, 300 h in total. Percentages are the share of a task that is
 |---|---|---|
 | 1 | Authentication and accounts | Done |
 | 2 | Security and data foundation (including the three dashboards, moved up) | Done |
-| 3 | Project lifecycle and DICI chat fixes | In progress (about 82%) |
-| 4 | Customer workspace | In progress (about 35%) |
+| 3 | Project lifecycle and DICI chat fixes | In progress (about 96%) |
+| 4 | Customer workspace | In progress (about 40%) |
 | 5 | Quoting engine | Not started |
 | 6 | Factory portal and admin | Not started |
 | 7 | Bilingual layer (English and Chinese) | Not started |
@@ -92,7 +92,7 @@ Weeks are 25 h each, 300 h in total. Percentages are the share of a task that is
 | 11 | Private beta launch | Not started |
 | 12 | Observe, improve and plan next | Not started |
 
-Overall about 27% of the plan.
+Overall about 29% of the plan.
 
 ### Week 3 detail
 
@@ -102,9 +102,9 @@ Overall about 27% of the plan.
 | Fix the chat bugs (audit, safe errors, value checks, memory, PDF results, error handling, paging) | Done and tested | Mon–Tue |
 | Save every conversation to its project (intake chat, reference image) | Done and tested | Wed |
 | Every stage change recorded in an activity history (with a guard so only the team and server can move a stage) | Done and SQL-tested | Thu |
-| Real project stages: Lead, Development, Quote Ready, Factory Review, Approved, Payment, Proof, Production, QC, Shipping, Delivered | About 60% (plain customer names done; factory moves and team picker on the same list left) | Thu–Fri, 3 h |
-| Switch "Start your project" from the temporary `/start` form to the AI chat (`START_PROJECT_HREF` in `lib/contact.ts`) and retire the form | Not started | Fri, 2 h |
-| Limits on AI and upload requests: tune the numbers (the monthly cap is set) | About 98% | Fri, 0.5 h |
+| Real project stages: Lead, Development, Quote Ready, Factory Review, Approved, Payment, Proof, Production, QC, Shipping, Delivered | Done (plain customer names, one consistency test across the team, factory and customer lists) | Thu–Fri, 3 h |
+| Switch "Start your project" from the temporary `/start` form to the AI chat (`START_PROJECT_HREF` in `lib/contact.ts`) and retire the form | Done (`/start` redirects; its files are kept) | Fri, 2 h |
+| Limits on AI and upload requests: tune the numbers (the monthly cap is set) | Done, tuned from real usage | Fri, 0.5 h |
 
 ### Week 4 detail
 Project page with a live progress tracker, files and messages (about 40%); DICI app restyled to the lime and black brand (the project page and chat are done, the intake page is not); email updates when a project changes stage; version-controlled database setup and a separate test environment (about 50%); hand-test the stage history and the factory's status button with real team and factory accounts (moved from week 3, about 0.5 h).
