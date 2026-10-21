@@ -67,6 +67,14 @@ test("every possible move reads well in the Activity tab, for the team and for c
   }
 });
 
+test("the shipping message does not promise tracking the page cannot show yet", () => {
+  /* tracking details arrive with the shipping work in week 9; until then the
+     customer is pointed at the team, not at a tracker that does not exist */
+  const text = `${nextStepFor("shipping").headline} ${nextStepFor("shipping").detail}`.toLowerCase();
+  assert.ok(!/track it/.test(text), text);
+  assert.match(text, /text us/);
+});
+
 test("the customer wording makes no promise the app cannot keep yet", () => {
   for (const status of PROJECT_STATUSES) {
     const { headline, detail } = nextStepFor(status);

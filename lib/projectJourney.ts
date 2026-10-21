@@ -108,7 +108,7 @@ const NEXT_STEPS: Record<string, NextStep> = {
   },
   shipping: {
     headline: "On its way",
-    detail: "Your order has shipped. Track it on the project page.",
+    detail: "Your order has shipped. See the latest on the project page, or text us for your tracking details.",
     tone: "waiting",
   },
   delivered: {
