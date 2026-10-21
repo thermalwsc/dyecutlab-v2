@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { brandFont } from "../../fonts";
 import { Footer, Header } from "../../updates/SiteChrome";
 import { projectStatusLabel } from "../../admin/statuses";
@@ -244,9 +244,15 @@ export default function ProjectPage() {
 
   /* which part of the workspace is showing: on a phone the tabs switch
      between them, on a wide screen the chat is always beside the project */
+  /* A link such as /project/DCL-00061?tab=chat opens straight on that part
+     (the dashboard's "Chat with DICI" button uses it). */
+  const search = useSearchParams();
   const [tab, setTab] = useState<
     "overview" | "files" | "activity" | "chat"
-  >("overview");
+  >(() => {
+    const wanted = search.get("tab");
+    return wanted === "chat" || wanted === "files" ? wanted : "overview";
+  });
 
   const [activity, setActivity] = useState<ActivityRow[]>([]);
   const [activityLoading, setActivityLoading] = useState(false);

@@ -69,6 +69,25 @@ export default async function FactoryPage({ searchParams }: { searchParams: Prom
     >
       <Banner params={query} copy={FACTORY_MESSAGES} />
 
+      {projects.length > 0 && (
+        <ul aria-label="Summary" className="mt-6 flex flex-wrap gap-2">
+          {[
+            { label: "need you", count: attention.length, hot: true },
+            { label: "on the way", count: waiting.length, hot: false },
+            { label: "delivered", count: finished.length, hot: false },
+          ]
+            .filter((chip) => chip.count > 0)
+            .map((chip) => (
+              <li
+                key={chip.label}
+                className={`rounded-full border-2 border-black px-4 py-1.5 text-[14px] font-extrabold ${chip.hot ? "bg-[var(--dcl-lime)]" : "bg-white"}`}
+              >
+                {chip.count} {chip.label}
+              </li>
+            ))}
+        </ul>
+      )}
+
       {projects.length === 0 ? (
         <div className="mt-8 rounded-[28px] bg-[var(--dcl-lime-soft)] p-5 sm:p-8">
           <h2 className="text-[clamp(20px,5.4vw,26px)] font-black tracking-[-0.04em]">Production jobs</h2>

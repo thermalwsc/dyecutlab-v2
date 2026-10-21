@@ -107,7 +107,7 @@ Overall about 29% of the plan.
 | Limits on AI and upload requests: tune the numbers (the monthly cap is set) | Done, tuned from real usage | Fri, 0.5 h |
 
 ### Week 4 detail
-Project page with a live progress tracker, files and messages (about 40%); DICI app restyled to the lime and black brand (the project page and chat are done, the intake page is not); email updates when a project changes stage; version-controlled database setup and a separate test environment (about 50%); hand-test the stage history and the factory's status button with real team and factory accounts (moved from week 3, about 0.5 h).
+Project page with a live progress tracker, files and messages (about 40%); DICI app restyled to the lime and black brand (the project page and chat are done, the intake page is not); email updates when a project changes stage; version-controlled database setup (done: every change is a migration file with a rolled-back check); hand-test the stage history and the factory's status button with real team and factory accounts (moved from week 3, about 0.5 h; the team stage change and the customer email are confirmed); archive the test projects before real customers are invited (later in the week, about 0.5 h, archive only).
 
 ### Weeks 5–12 (summary)
 - **5 Quoting engine:** estimate from style, size, quantity, finish, tooling, freight and margin; always labeled as an estimate; quote versions per project; editable pricing tables; quote PDF.
@@ -115,7 +115,7 @@ Project page with a live progress tracker, files and messages (about 40%); DICI 
 - **7 Bilingual layer:** messages translated both ways keeping specifications exact, original always viewable, factory portal in Chinese, corrections logged.
 - **8 Payments:** secure checkout on an approved quote, automatic move to Proof once paid, receipts, test mode first.
 - **9 Proofs, production and shipping:** factory uploads proofs, customer approves, production milestones and QC photos, tracking, notifications.
-- **10 Testing and launch readiness:** automated tests for sign-in, data security, stages and payments; security review and error monitoring; full test order; release.
+- **10 Testing and launch readiness:** a separate test database (moved from week 4: all current data is test data, so it waits until real customers are in); automated tests for sign-in, data security, stages and payments; security review and error monitoring; full test order; release.
 - **11 Private beta:** first real customers and the partner factory, beta dashboard, daily fixes.
 - **12 Observe and plan next:** fix first-order issues, beta report, prioritized plan for after beta.
 

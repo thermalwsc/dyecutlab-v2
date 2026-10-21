@@ -101,15 +101,25 @@ export function ProjectCard({ project }: { project: ProjectRow }) {
         <p className="mt-0.5 text-[14px] leading-snug text-zinc-700">{next.detail}</p>
       </div>
 
-      <Link
-        href={href}
-        className={`group mt-4 flex min-h-[52px] items-center justify-between rounded-full border-[3px] border-black px-5 text-[15px] font-extrabold transition active:scale-[0.98] ${
-          needsYou ? "bg-[var(--dcl-lime)] text-black" : "bg-white text-black hover:bg-black hover:text-white"
-        }`}
-      >
-        {next.cta ?? "Open project"}
-        <ArrowIcon className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-      </Link>
+      <div className={`mt-4 grid gap-2 ${next.tone === "done" ? "" : "sm:grid-cols-[1fr_auto]"}`}>
+        <Link
+          href={href}
+          className={`group flex min-h-[52px] items-center justify-between rounded-full border-[3px] border-black px-5 text-[15px] font-extrabold transition active:scale-[0.98] ${
+            needsYou ? "bg-[var(--dcl-lime)] text-black" : "bg-white text-black hover:bg-black hover:text-white"
+          }`}
+        >
+          {next.cta ?? "Open project"}
+          <ArrowIcon className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+        </Link>
+        {next.tone !== "done" && (
+          <Link
+            href={`${href}?tab=chat`}
+            className="flex min-h-[52px] items-center justify-center rounded-full border-[3px] border-black bg-white px-5 text-[15px] font-extrabold transition hover:bg-[var(--dcl-lime)] active:scale-[0.98]"
+          >
+            Chat with DICI
+          </Link>
+        )}
+      </div>
       {next.tone === "done" && (
         <p className="mt-3 text-center">
           <Link href={START_PROJECT_HREF} className="text-[14px] font-extrabold underline decoration-2 underline-offset-4">

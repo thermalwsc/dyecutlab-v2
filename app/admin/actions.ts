@@ -7,6 +7,7 @@ import { createRateLimiter } from "../../lib/rateLimit";
 import { getServiceRoleSupabase, isServiceRoleConfigured } from "../../lib/supabase/admin";
 import { getServerSupabase } from "../../lib/supabase/server";
 import { PROJECT_STATUSES, QUOTE_STATUSES } from "./statuses";
+import { notifyCustomerOfStageChange } from "../../lib/customerAlerts";
 
 /* =========================================================
    Team workspace (/admin) server actions
@@ -205,6 +206,10 @@ export async function updateProject(formData: FormData) {
   /* Editable columns go through the team member's own client (RLS + column
      grants allow it). */
   const supabase = await getServerSupabase();
+
+  /* The stage before this save, so the customer can be told if it moved on. */
+  const { data: before } = await supabase.from("projects").select("status").eq("id", id).maybeSingle();
+
   const { error } = await supabase
     .from("projects")
     .update({ ...rest, ...(status ? { status } : {}), updated_at: new Date().toISOString() })
@@ -212,6 +217,10 @@ export async function updateProject(formData: FormData) {
   if (error) {
     console.error("PROJECT UPDATE ERROR:", error.message);
     back(path, { error: "save_failed" });
+  }
+
+  if (status && before && status !== before.status) {
+    await notifyCustomerOfStageChange({ projectId: id, fromStatus: before.status, toStatus: status });
   }
   back(path, { ok: "saved" });
 }

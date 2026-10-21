@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { Footer, Header } from "../updates/SiteChrome";
 import { MAX_CHAT_CHARS } from "../../lib/uploadRules";
 import { questionKindFromText } from "../../lib/intakeQuestions";
+import { readRememberedClient } from "../../lib/rememberedClient";
 import { summaryRows } from "../../lib/intakeSummary";
 import { toRequestHistory } from "../../lib/chatHistory";
 import { PIECES_PER_UNIT, calculateProduction, roundOrderQuantity } from "../../lib/production";
@@ -21,6 +22,8 @@ type ClientData = {
   phone: string;
   email: string;
   marketingSms: boolean;
+  /** The account that saved it, so another account never reuses it. */
+  userId?: string;
 };
 
 const EMPTY_CLIENT: ClientData = {
@@ -227,27 +230,35 @@ export default function Home() {
   const [clientHydrated, setClientHydrated] = useState(false);
 
   useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(REMEMBERED_CLIENT_KEY);
+    let cancelled = false;
 
-      if (stored) {
-        const parsed = JSON.parse(stored) as ClientData;
+    (async () => {
+      try {
+        const stored = window.localStorage.getItem(REMEMBERED_CLIENT_KEY);
+        if (stored) {
+          const {
+            data: { user },
+          } = await getBrowserSupabase().auth.getUser();
+          const remembered = readRememberedClient(stored, user?.id);
 
-        if (parsed?.id && parsed?.phone) {
-          setClient({
-            id: parsed.id,
-            phone: parsed.phone,
-            email: parsed.email ?? "",
-            marketingSms: Boolean(parsed.marketingSms),
-          });
+          if (remembered && user) {
+            if (!cancelled) setClient({ ...remembered, userId: user.id });
+          } else {
+            /* another account's memory, or an old one: forget it */
+            window.localStorage.removeItem(REMEMBERED_CLIENT_KEY);
+          }
         }
+      } catch (error) {
+        console.error("REMEMBERED CLIENT LOAD ERROR:", error);
+        window.localStorage.removeItem(REMEMBERED_CLIENT_KEY);
+      } finally {
+        if (!cancelled) setClientHydrated(true);
       }
-    } catch (error) {
-      console.error("REMEMBERED CLIENT LOAD ERROR:", error);
-      window.localStorage.removeItem(REMEMBERED_CLIENT_KEY);
-    } finally {
-      setClientHydrated(true);
-    }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function rememberClient(savedClient: ClientData) {
@@ -296,6 +307,13 @@ export default function Home() {
             ...current,
             clientId: savedClient.id,
           }));
+          setStage("conversation");
+        }}
+        onSkip={() => {
+          /* No contact record: the project is saved without one and updates go
+             by email. Nothing is remembered, so the next project asks again. */
+          setClient(EMPTY_CLIENT);
+          setProject((current) => ({ ...current, clientId: null }));
           setStage("conversation");
         }}
       />
@@ -531,11 +549,13 @@ function ClientCapture({
   setClient,
   onBack,
   onContinue,
+  onSkip,
 }: {
   client: ClientData;
   setClient: React.Dispatch<React.SetStateAction<ClientData>>;
   onBack: () => void;
   onContinue: (client: ClientData) => void;
+  onSkip: () => void;
 }) {
   const [phone, setPhone] = useState(client.phone);
   const [email, setEmail] = useState(client.email);
@@ -594,7 +614,7 @@ function ClientCapture({
             .single();
 
       if (saveError?.code === "23505") {
-        throw new Error("That mobile number is already linked to another account.");
+        throw new Error("That number is already used by another account. Use a different number, or skip for now.");
       }
       if (saveError) throw saveError;
 
@@ -603,6 +623,7 @@ function ClientCapture({
         phone: data.phone,
         email: data.email ?? "",
         marketingSms: Boolean(data.marketing_sms_opt_in),
+        userId: user.id,
       };
 
       setClient(savedClient);
@@ -620,7 +641,7 @@ function ClientCapture({
     } catch (saveError) {
       console.error("CLIENT SAVE ERROR:", saveError);
       const friendly =
-        saveError instanceof Error && /already linked|sign in again/i.test(saveError.message)
+        saveError instanceof Error && /already used|sign in again/i.test(saveError.message)
           ? saveError.message
           : null;
       setError(friendly ?? "I couldn't save your contact details yet. Please try again.");
@@ -711,6 +732,18 @@ function ClientCapture({
           >
             {saving ? "Saving..." : "Continue to DICI"} <span aria-hidden="true">→</span>
           </button>
+
+          <button
+            type="button"
+            onClick={onSkip}
+            disabled={saving}
+            className="mt-3 w-full rounded-full border-2 border-black bg-white py-3.5 text-[15px] font-extrabold transition hover:bg-[#f1f8e0] disabled:opacity-50"
+          >
+            Skip for now
+          </button>
+          <p className="mt-3 text-center text-[13px] font-medium text-zinc-600">
+            You can add a number later. We&apos;ll keep you posted by email until then.
+          </p>
         </div>
 
         <p className="mt-5 text-[12px] font-medium leading-5 text-zinc-500">
@@ -915,7 +948,8 @@ function Conversation({
 
       return created;
     } catch (error) {
-      console.error("PROJECT SAVE ERROR:", error);
+      const failure = error as { message?: string; code?: string; details?: string; hint?: string };
+      console.error("PROJECT SAVE ERROR:", failure?.message, failure?.code, failure?.details, failure?.hint);
       setProjectError(
         "I understood the project, but I couldn't save it yet. Please try again."
       );

@@ -66,6 +66,8 @@ export function productionRuleText() {
     `One unit is ${PIECES_PER_UNIT} finished pieces. Bulk orders must be in multiples of ${ORDER_INCREMENT}, so the total is rounded up to the next ${ORDER_INCREMENT}.`,
     `Examples: 1 unit = ${raw(1)} pieces, ordered as ${ordered(1)}. 5 units = ${raw(5)} pieces, ordered as ${ordered(5)}. 10 units = ${raw(10)} pieces, ordered as ${ordered(10)}.`,
     `With flavors, each flavor must also be a whole multiple of ${ORDER_INCREMENT} pieces, so the total rounds up to a multiple of flavors x ${ORDER_INCREMENT}: 1 unit with 3 flavors = ${ordered(1, 3)}.`,
+    `The smallest order is 1 unit, produced as ${ordered(1)} pieces. Production runs in multiples of ${ORDER_INCREMENT}, so an exact number such as ${PIECES_PER_UNIT} cannot be made.`,
+    `If a customer asks for fewer pieces than that, or an exact number the rule does not give, explain it ONCE in plain words, for example: "We produce in multiples of ${ORDER_INCREMENT}, so ${PIECES_PER_UNIT} pieces is produced as ${ordered(1)}. That is our smallest order." Say that our team can look at special requests, then carry on. Never say a different quantity "works" without saying what will actually be produced, and do not keep repeating the explanation.`,
     `To turn a number of finished pieces into units, use the smallest number of units whose ordered total covers those pieces: ${[200, 300, 1000].map((p) => `${p.toLocaleString("en-US")} pieces = ${unitsForPieces(p)} ${unitsForPieces(p) === 1 ? "unit" : "units"}`).join(", ")}.`,
   ].join("\n");
 }

@@ -90,6 +90,25 @@ export default async function AccountPage() {
                 : "Here's where your projects stand."}
           </p>
 
+          {projects.length > 0 && (
+            <ul aria-label="Summary" className="mt-4 flex flex-wrap gap-2">
+              {[
+                { label: "need you", count: needsYou.length, hot: true },
+                { label: "in progress", count: active.length - needsYou.length, hot: false },
+                { label: "delivered", count: delivered.length, hot: false },
+              ]
+                .filter((chip) => chip.count > 0)
+                .map((chip) => (
+                  <li
+                    key={chip.label}
+                    className={`rounded-full border-2 border-black px-4 py-1.5 text-[14px] font-extrabold ${chip.hot ? "bg-[var(--dcl-lime)]" : "bg-white"}`}
+                  >
+                    {chip.count} {chip.label}
+                  </li>
+                ))}
+            </ul>
+          )}
+
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             <Link
               href={START_PROJECT_HREF}
@@ -171,7 +190,7 @@ export default async function AccountPage() {
                 <p className="text-[17px] font-extrabold">No projects yet. Here&rsquo;s how it works:</p>
                 <ol className="mt-4 grid gap-3 text-[15px]">
                   {[
-                    ["Tell us your idea", "Text us or fill in a short form. A photo or a sentence is enough."],
+                    ["Tell us your idea", "Chat with DICI or text us. A photo or a sentence is enough."],
                     ["We work out the details", "Our team and the factory confirm the specs, price and timing."],
                     ["Approve, pay and track", "See your quote and proof, then follow your order right here."],
                   ].map(([title, body], index) => (
@@ -187,7 +206,7 @@ export default async function AccountPage() {
                   ))}
                 </ol>
                 <p className="mt-5 text-[14px] text-zinc-700">
-                  Once our team sets up your project, it shows up here and we&rsquo;ll text you.
+                  Your project shows up here as soon as you start it, and we&rsquo;ll keep you posted.
                 </p>
               </div>
             ) : active.length === 0 ? (

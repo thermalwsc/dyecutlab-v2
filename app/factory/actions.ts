@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "../../lib/auth/guard";
 import { sendStaffFactoryUpdateEmail } from "../../lib/brevo";
+import { notifyCustomerOfStageChange } from "../../lib/customerAlerts";
 import { factoryMoveFor } from "../../lib/factoryWork";
 import { sendStaffFactoryUpdateSms } from "../../lib/sendblue";
 import { projectStatusLabel } from "../admin/statuses";
@@ -85,6 +86,9 @@ export async function moveFactoryProject(formData: FormData) {
     if (error) console.error("FACTORY MOVE ERROR:", error.message);
     back(path, { error: error ? "save_failed" : "stale" });
   }
+
+  /* Tell the customer their order moved on (never blocks or undoes the update). */
+  await notifyCustomerOfStageChange({ projectId: project.id, fromStatus: project.status, toStatus: move.to });
 
   /* Tell the team (best effort: a failed alert never undoes the update). */
   const admin = getServiceRoleSupabase();

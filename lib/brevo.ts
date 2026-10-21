@@ -20,6 +20,8 @@
 
 import { type ChannelResult, errorMessage } from "./channels";
 import { type NewProjectAlert, buildProjectAlertEmail } from "./projectAlert";
+import { buildStageEmail } from "./stageEmail";
+import { renderEmail } from "./emailLayout";
 import { CONTACT } from "./contact";
 
 const BREVO_API_BASE = "https://api.brevo.com/v3";
@@ -326,36 +328,24 @@ export async function sendStaffSignupEmail(input: {
   }
 
   const who = input.name || input.email || input.phone || "Someone";
-  const rows = [
-    ["Name", input.name],
-    ["Email", input.email],
-    ["Mobile", input.phone],
-  ].filter((row): row is [string, string] => Boolean(row[1]));
-
-  const htmlRows = rows
-    .map(
-      ([label, value]) =>
-        `<tr><td style="padding:6px 16px 6px 0;font-size:12px;font-weight:700;color:#71717a;">${label.toUpperCase()}</td><td style="padding:6px 0;font-size:15px;">${escapeHtml(value)}</td></tr>`
-    )
-    .join("");
+  const { html, text } = renderEmail({
+    eyebrow: `Hi ${CONTACT.personName} — new beta sign-up`,
+    headline: `${who} joined the beta list.`,
+    rows: [
+      { label: "Name", value: input.name ?? "" },
+      { label: "Email", value: input.email ?? "" },
+      { label: "Mobile", value: input.phone ?? "" },
+    ],
+    footer: "Sent from the landing page sign-up form. Saved in Supabase → subscribers and added to Brevo contacts.",
+  });
 
   try {
     await brevoPost("/smtp/email", apiKey, {
       sender: { name: senderName, email: senderEmail },
       to: [{ email: staffEmail }],
       subject: `New beta sign-up — ${who}`,
-      htmlContent: `<!doctype html>
-<html lang="en">
-  <body style="margin:0;padding:24px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#0a0a0a;">
-    <p style="margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:0.12em;color:#65a30d;">HI ${escapeHtml(CONTACT.personName.toUpperCase())} — NEW BETA SIGN-UP</p>
-    <p style="margin:0 0 18px;font-size:24px;font-weight:900;">${escapeHtml(who)} joined the beta list.</p>
-    <table role="presentation" cellpadding="0" cellspacing="0" style="padding:14px 16px;border-radius:14px;background:#f2fadf;">${htmlRows}</table>
-    <p style="margin:18px 0 0;font-size:11px;color:#a1a1aa;">Sent from the landing page sign-up form. Saved in Supabase → subscribers and added to Brevo contacts.</p>
-  </body>
-</html>`,
-      textContent: `Hi ${CONTACT.personName} — new beta sign-up\n\n${rows
-        .map(([label, value]) => `${label}: ${value}`)
-        .join("\n")}\n\nSaved in Supabase → subscribers and added to Brevo contacts.`,
+      htmlContent: html,
+      textContent: text,
       tags: ["beta_signup_staff"],
     });
 
@@ -384,35 +374,83 @@ export async function sendStaffProjectEmail(input: NewProjectAlert): Promise<Cha
   }
 
   const alert = buildProjectAlertEmail(input);
-  const rows = [
-    alert.title ? `<p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#71717a;">PROJECT</p><p style="margin:0 0 18px;padding:14px 16px;border-radius:14px;background:#f2fadf;font-size:15px;line-height:22px;">${escapeHtml(alert.projectNumber)} · ${escapeHtml(alert.title)}${alert.size ? ` · ${escapeHtml(alert.size)}` : ""}</p>` : "",
-    alert.request ? `<p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#71717a;">THEIR FIRST MESSAGE</p><p style="margin:0 0 18px;font-size:15px;line-height:22px;">${escapeHtml(alert.request)}</p>` : "",
-  ].join("");
-  const contact = [alert.email, alert.phone].filter(Boolean).map(escapeHtml).join(" · ");
+  const { html, text } = renderEmail({
+    eyebrow: `Hi ${CONTACT.personName} — new project from the chat`,
+    headline: alert.who,
+    rows: [
+      { label: "Project", value: [alert.projectNumber, alert.title, alert.size].filter(Boolean).join(" · ") },
+      { label: "Email", value: alert.email },
+      { label: "Phone", value: alert.phone },
+    ],
+    quote: alert.request ? { label: "Their first message", text: alert.request } : undefined,
+    cta: { label: "Open it in the team workspace", url: alert.projectUrl },
+    footer: "The customer can keep chatting with DICI; the whole conversation is saved on the project.",
+  });
 
   try {
     await brevoPost("/smtp/email", apiKey, {
       sender: { name: senderName, email: senderEmail },
       to: [{ email: staffEmail }],
       subject: alert.subject,
-      htmlContent: `<!doctype html>
-<html lang="en">
-  <body style="margin:0;padding:24px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#0a0a0a;">
-    <p style="margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:0.12em;color:#65a30d;">HI ${escapeHtml(CONTACT.personName.toUpperCase())} — NEW PROJECT FROM THE CHAT</p>
-    <p style="margin:0 0 ${contact ? "8px" : "18px"};font-size:24px;font-weight:900;">${escapeHtml(alert.who)}</p>
-    ${contact ? `<p style="margin:0 0 18px;font-size:15px;">${contact}</p>` : ""}
-    ${rows}
-    <p style="margin:0;font-size:14px;"><a href="${escapeHtml(alert.projectUrl)}" style="color:#0a0a0a;font-weight:700;">Open it in the team workspace</a></p>
-    <p style="margin:18px 0 0;font-size:11px;color:#a1a1aa;">The customer can keep chatting with DICI; the whole conversation is saved on the project.</p>
-  </body>
-</html>`,
-      textContent: `Hi ${CONTACT.personName} — new project from the chat\n\n${alert.who}${contact ? `\n${[alert.email, alert.phone].filter(Boolean).join(" · ")}` : ""}\n\n${alert.projectNumber}${alert.title ? ` · ${alert.title}` : ""}${alert.size ? ` · ${alert.size}` : ""}\n${alert.request ? `\nTheir first message:\n${alert.request}\n` : ""}\nOpen it: ${alert.projectUrl}\n\nThe whole conversation is saved on the project.`,
+      htmlContent: html,
+      textContent: text,
       tags: ["new_project_staff"],
     });
 
     return { status: "sent" };
   } catch (error) {
     console.error("BREVO NEW PROJECT EMAIL ERROR:", error);
+    return { status: "failed", detail: errorMessage(error) };
+  }
+}
+
+/* Customer email when their project moves to a new stage. Transactional: it is
+   about their own order, so it needs no marketing consent. The words come from
+   lib/stageEmail.ts; everything is escaped here. */
+export async function sendCustomerStageEmail(
+  input: ReturnType<typeof buildStageEmail> & { to: string }
+): Promise<ChannelResult> {
+  const { apiKey, senderEmail, senderName } = getEmailConfig();
+
+  if (!apiKey) {
+    return { status: "skipped", detail: "BREVO_API_KEY is not configured." };
+  }
+
+  if (!senderEmail) {
+    return {
+      status: "skipped",
+      detail: "BREVO_SENDER_EMAIL is not configured.",
+    };
+  }
+
+  const { html, text } = renderEmail({
+    eyebrow: "Your project update",
+    greeting: input.greeting,
+    headline: input.headline,
+    intro: input.detail,
+    rows: [
+      { label: "Project", value: input.title ? `${input.projectNumber} · ${input.title}` : input.projectNumber },
+      { label: "Stage", value: input.stage },
+    ],
+    cta: { label: input.ctaLabel, url: input.projectUrl },
+    footer: "You are getting this because you started a project at DYE CUT LAB. Questions? Just reply to this email.",
+  });
+
+  try {
+    await brevoPost("/smtp/email", apiKey, {
+      sender: { name: senderName, email: senderEmail },
+      /* "Just reply to this email" has to reach a real inbox */
+      replyTo: { name: "DYE CUT LAB", email: CONTACT.email },
+      to: [{ email: input.to }],
+      subject: input.subject,
+      htmlContent: html,
+      textContent: text,
+      tags: ["customer_stage_update"],
+    });
+
+    return { status: "sent" };
+  } catch (error) {
+    console.error("BREVO CUSTOMER STAGE EMAIL ERROR:", error);
     return { status: "failed", detail: errorMessage(error) };
   }
 }
@@ -441,24 +479,21 @@ export async function sendStaffFactoryUpdateEmail(input: {
   }
 
   const headline = `${input.factoryName} moved ${input.projectNumber} to ${input.toLabel}`;
+  const { html, text } = renderEmail({
+    eyebrow: `Hi ${CONTACT.personName} — factory update`,
+    headline,
+    rows: [{ label: "Project", value: `${input.projectNumber} · ${input.projectTitle}` }],
+    cta: { label: "Open it in the team workspace", url: input.projectUrl },
+    footer: "The customer's dashboard already shows the new status.",
+  });
 
   try {
     await brevoPost("/smtp/email", apiKey, {
       sender: { name: senderName, email: senderEmail },
       to: [{ email: staffEmail }],
       subject: headline,
-      htmlContent: `<!doctype html>
-<html lang="en">
-  <body style="margin:0;padding:24px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#0a0a0a;">
-    <p style="margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:0.12em;color:#65a30d;">HI ${escapeHtml(CONTACT.personName.toUpperCase())} — FACTORY UPDATE</p>
-    <p style="margin:0 0 18px;font-size:24px;font-weight:900;">${escapeHtml(headline)}</p>
-    <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#71717a;">PROJECT</p>
-    <p style="margin:0 0 18px;padding:14px 16px;border-radius:14px;background:#f2fadf;font-size:15px;line-height:22px;">${escapeHtml(input.projectNumber)} · ${escapeHtml(input.projectTitle)}</p>
-    <p style="margin:0;font-size:14px;"><a href="${escapeHtml(input.projectUrl)}" style="color:#0a0a0a;font-weight:700;">Open it in the team workspace</a></p>
-    <p style="margin:18px 0 0;font-size:11px;color:#a1a1aa;">The customer's dashboard already shows the new status.</p>
-  </body>
-</html>`,
-      textContent: `Hi ${CONTACT.personName} — factory update\n\n${headline}\n${input.projectNumber} · ${input.projectTitle}\n\nOpen it: ${input.projectUrl}\n\nThe customer's dashboard already shows the new status.`,
+      htmlContent: html,
+      textContent: text,
       tags: ["factory_update_staff"],
     });
 

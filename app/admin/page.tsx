@@ -6,6 +6,7 @@ import { getServerSupabase } from "../../lib/supabase/server";
 import { ArrowIcon } from "../updates/Icons";
 import { RoleShell } from "../updates/RoleShell";
 import { AdminTabs } from "./ui";
+import { countByStage, isNewProject } from "../../lib/dashboardSummary";
 import { projectStatusLabel } from "./statuses";
 import StatusSelect from "./StatusSelect";
 import { QUOTE_STATUSES, type QuoteStatus } from "./statuses";
@@ -62,7 +63,7 @@ export default async function AdminPage() {
   const name = profile?.full_name || user.email || "there";
   const isAdmin = role === "dcl_admin";
 
-  const [quotes, newQuotes, projects, signups] = await Promise.all([
+  const [quotes, newQuotes, projects, signups, stageRows] = await Promise.all([
     supabase
       .from("quote_requests")
       .select("id, description, phone, status, created_at, customer_name, customer_email", { count: "exact" })
@@ -76,6 +77,7 @@ export default async function AdminPage() {
       .order("created_at", { ascending: false })
       .limit(LIST_LIMIT),
     supabase.from("subscribers").select("id", { count: "exact", head: true }),
+    supabase.from("projects").select("status").is("archived_at", null).limit(5000),
   ]);
 
   /* The request/sign-up tables need the team-read migration; until it runs
@@ -86,11 +88,12 @@ export default async function AdminPage() {
 
   const quoteRows = (quotes.data ?? []) as QuoteRow[];
   const projectRows = (projects.data ?? []) as ProjectRow[];
+  const stageCounts = countByStage((stageRows.data ?? []).map((row) => row.status as string | null));
 
-  const stats = [
-    { label: "New requests", value: requestsLocked ? "—" : newQuotes.count ?? 0 },
-    { label: "All requests", value: requestsLocked ? "—" : quotes.count ?? 0 },
-    { label: "Projects", value: projects.count ?? 0 },
+  const stats: { label: string; value: number | string; href?: string }[] = [
+    { label: "New requests", value: requestsLocked ? "—" : newQuotes.count ?? 0, href: "/admin/requests?status=new" },
+    { label: "All requests", value: requestsLocked ? "—" : quotes.count ?? 0, href: "/admin/requests" },
+    { label: "Projects", value: projects.count ?? 0, href: "/admin/projects" },
     { label: "Beta sign-ups", value: signups.error ? "—" : signups.count ?? 0 },
   ];
 
@@ -99,21 +102,62 @@ export default async function AdminPage() {
       <AdminTabs active="/admin" isAdmin={isAdmin} />
       {/* At a glance */}
       <ul className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-        {stats.map((stat) => (
-          <li key={stat.label} className="rounded-2xl border-2 border-zinc-200 bg-white px-5 py-4">
-            <p className="text-[clamp(28px,7vw,40px)] font-black leading-none tracking-[-0.04em] tabular-nums">
-              {stat.value}
-            </p>
-            <p className="mt-2 text-[14px] font-bold text-zinc-600">{stat.label}</p>
-          </li>
-        ))}
+        {stats.map((stat) => {
+          const inner = (
+            <>
+              <p className="text-[clamp(28px,7vw,40px)] font-black leading-none tracking-[-0.04em] tabular-nums">
+                {stat.value}
+              </p>
+              <p className="mt-2 text-[14px] font-bold text-zinc-600">{stat.label}</p>
+            </>
+          );
+          return (
+            <li key={stat.label}>
+              {stat.href ? (
+                <Link
+                  href={stat.href}
+                  className="block rounded-2xl border-2 border-zinc-200 bg-white px-5 py-4 transition hover:border-black"
+                >
+                  {inner}
+                </Link>
+              ) : (
+                <div className="rounded-2xl border-2 border-zinc-200 bg-white px-5 py-4">{inner}</div>
+              )}
+            </li>
+          );
+        })}
       </ul>
+
+      {/* Where every project is, one tap to the list for that stage */}
+      {stageCounts.length > 0 && (
+        <section aria-labelledby="stages-heading" className="mt-6 rounded-2xl border-2 border-zinc-200 bg-white p-5 sm:p-6">
+          <h2 id="stages-heading" className="text-[20px] font-black tracking-[-0.03em]">
+            Projects by stage
+          </h2>
+          <p className="mt-1 text-[14px] text-zinc-600">Tap a stage to see just those projects.</p>
+          <ul className="mt-4 flex flex-wrap gap-2">
+            {stageCounts.map((row) => (
+              <li key={row.status}>
+                <Link
+                  href={`/admin/projects?status=${encodeURIComponent(row.status)}`}
+                  className="inline-flex items-center gap-2 rounded-full border-2 border-black bg-white py-1.5 pl-4 pr-1.5 text-[14px] font-extrabold transition hover:bg-[#c2f23a]"
+                >
+                  {projectStatusLabel(row.status)}
+                  <span className="rounded-full bg-black px-2.5 py-0.5 text-[13px] tabular-nums text-[#c2f23a]">
+                    {row.count}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2 lg:items-start">
         {/* Quote requests from /start */}
         <Panel
-          title="Quote requests"
-          intro="Requests from the website. Update the status as you follow up."
+          title="Website requests"
+          intro="Requests sent from the old website form. New projects from the chat are under Projects."
           footer={
             !requestsLocked && (
               <Link href="/admin/requests" className="font-bold text-black underline underline-offset-2">
@@ -179,7 +223,12 @@ export default async function AdminPage() {
                     className="group flex items-center justify-between gap-3 py-4"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-[15px] font-bold">{project.title}</p>
+                      <p className="flex items-center gap-2 text-[15px] font-bold">
+                        <span className="truncate">{project.title}</span>
+                        {isNewProject(project.created_at) && (
+                          <span className="shrink-0 rounded-full bg-[#c2f23a] px-2 py-0.5 text-[11px] font-extrabold">NEW</span>
+                        )}
+                      </p>
                       <p className="mt-1 text-[13px] text-zinc-600">
                         <span className="font-bold text-black">{project.project_number}</span> ·{" "}
                         {formatDate(project.created_at)}
