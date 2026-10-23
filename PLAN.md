@@ -107,7 +107,7 @@ Overall about 32% of the plan.
 | Limits on AI and upload requests: tune the numbers (the monthly cap is set) | Done, tuned from real usage | Fri, 0.5 h |
 
 ### Week 4 detail
-Project page with a live progress tracker, files and messages (about 40%); DICI app restyled to the lime and black brand (the project page and chat are done, the intake page is not); email updates when a project changes stage; version-controlled database setup (done: every change is a migration file with a rolled-back check); hand-test the stage history and the factory's status button with real team and factory accounts (moved from week 3, about 0.5 h; done: confirmed with a team and a factory account); archive the test projects before real customers are invited (later in the week, about 0.5 h, archive only).
+Project page with a live progress tracker, files and messages (about 40%); DICI app restyled to the lime and black brand (the project page and chat are done, the intake page is not); email updates when a project changes stage; version-controlled database setup (done: every change is a migration file with a rolled-back check); hand-test the stage history and the factory's status button with real team and factory accounts (moved from week 3, about 0.5 h; done: confirmed with a team and a factory account); a final live run on the live site as a brand-new customer before the early beta (Friday, about 1 h); archive the test projects before real customers are invited (later in the week, about 0.5 h, archive only).
 
 ### Weeks 5–12 (summary)
 - **5 Quoting engine:** estimate from style, size, quantity, finish, tooling, freight and margin; always labeled as an estimate; quote versions per project; editable pricing tables; quote PDF.

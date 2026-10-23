@@ -81,4 +81,6 @@ test("the rule told to the AI matches what the code does", () => {
   assert.match(text, /smallest order is 1 unit, produced as 200 pieces/);
   assert.match(text, /explain it ONCE/);
   assert.match(text, /our team can look at special requests/);
+  assert.match(text, /Never open your reply with "Yes", "That works" or "Sure"/);
+  assert.match(text, /The smallest order is 200 pieces, so 128 would be produced as 200/);
 });

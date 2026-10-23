@@ -12,7 +12,7 @@ import { brandFont } from "../../fonts";
 import { Footer, Header } from "../../updates/SiteChrome";
 import { projectStatusLabel } from "../../admin/statuses";
 import { getBrowserSupabase } from "../../../lib/supabase/browser";
-import { JOURNEY_STEPS, customerStatusLabel, journeyStepIndex } from "../../../lib/projectJourney";
+import { customerStatusLabel, journeyStepIndex } from "../../../lib/projectJourney";
 import { chatErrorMessage } from "../../../lib/chatErrors";
 import {
   activityDate,
@@ -20,10 +20,17 @@ import {
   describeActivity,
   type ActivityRow,
 } from "../../../lib/projectActivity";
+import { trackerSteps } from "../../../lib/stageDates";
+import { latestMessage, toPreview } from "../../../lib/messagePreview";
+import {
+  canShowThumbnail,
+  downloadHref,
+  fileExtension,
+  formatFileSize,
+} from "../../../lib/fileDisplay";
 
-/* Tracker steps come from the shared customer journey (lib/projectJourney.ts),
-   so the project page and the dashboard always agree. */
-const STAGES = JOURNEY_STEPS;
+/* The tracker steps come from the shared customer journey
+   (lib/projectJourney.ts), so the project page and the dashboard always agree. */
 const stageIndex = journeyStepIndex;
 
 /* Extra details only the DYE CUT LAB team sees. */
@@ -258,6 +265,11 @@ export default function ProjectPage() {
   const [activityLoading, setActivityLoading] = useState(false);
   const [activityFailed, setActivityFailed] = useState(false);
 
+  /* one history request at a time; wantsActivityErrorRef is true when the
+     Activity tab is waiting on it, so a failure is shown there */
+  const activityInFlightRef = useRef(false);
+  const wantsActivityErrorRef = useRef(false);
+
   const [hasEarlier, setHasEarlier] = useState(false);
 
   const [loadingEarlier, setLoadingEarlier] =
@@ -343,9 +355,23 @@ export default function ProjectPage() {
     }
   }
 
-  /* Stage history for the Activity tab. Read-only: rows are written by database
-     triggers, never from this page. */
-  async function loadActivity() {
+  /* Stage history for the Activity tab and for the tracker dates. Read-only:
+     rows are written by database triggers, never from this page. The page loads
+     it straight away (quiet, so a failure changes nothing on screen); opening
+     the Activity tab loads it again, so it is never out of date. */
+  async function loadActivity(quiet = false) {
+    /* one request at a time: if one is already running, the Activity tab just
+       waits for it and shows its failure, if there is one */
+    if (activityInFlightRef.current) {
+      if (!quiet) {
+        wantsActivityErrorRef.current = true;
+      }
+      return;
+    }
+
+    activityInFlightRef.current = true;
+    wantsActivityErrorRef.current = !quiet;
+
     try {
       setActivityLoading(true);
       setActivityFailed(false);
@@ -357,15 +383,20 @@ export default function ProjectPage() {
       const data = await response.json().catch(() => null);
 
       if (!response.ok || !data) {
-        setActivityFailed(true);
+        if (wantsActivityErrorRef.current) {
+          setActivityFailed(true);
+        }
         return;
       }
 
       setActivity(cleanActivity(data.activity));
     } catch (error) {
       console.error("ACTIVITY LOAD ERROR:", error);
-      setActivityFailed(true);
+      if (wantsActivityErrorRef.current) {
+        setActivityFailed(true);
+      }
     } finally {
+      activityInFlightRef.current = false;
       setActivityLoading(false);
     }
   }
@@ -513,6 +544,9 @@ export default function ProjectPage() {
     loadProject();
     loadMessages();
     loadFiles();
+    /* the tracker shows when each step was reached, so the history comes
+       with the page; a failure here changes nothing on screen */
+    loadActivity(true);
   }, [projectId]);
 
   /*
@@ -950,6 +984,24 @@ export default function ProjectPage() {
 
   const currentStage = stageIndex(project.status);
 
+  /* The five steps with the date each one was reached, and which one is
+     "now". Without history the dates are simply missing. */
+  const tracker = trackerSteps(project.status, activity);
+
+  /* the newest chat message, for the preview under the status; messages that
+     are only on screen and not saved yet have no date and are skipped */
+  const latestPreview = toPreview(
+    latestMessage(
+      messages
+        .filter((item) => item.created_at)
+        .map((item) => ({
+          role: item.role,
+          message: item.text,
+          created_at: item.created_at as string,
+        }))
+    )
+  );
+
   const quantity =
     project.quantity != null
       ? `${project.quantity.toLocaleString()} PCS`
@@ -1152,13 +1204,15 @@ export default function ProjectPage() {
             </div>
 
             <ol className="timeline">
-              {STAGES.map((stage, index) => (
-                <li key={stage.label} className="timeline-item">
+              {tracker.map((step, index) => (
+                <li key={step.label} className="timeline-item">
                   {index > 0 && <TimelineLine done={index <= currentStage} />}
                   <TimelineStep
-                    label={stage.label}
+                    label={step.label}
                     active={index === currentStage}
                     done={index < currentStage}
+                    state={step.state}
+                    date={step.date}
                   />
                 </li>
               ))}
@@ -1177,6 +1231,43 @@ export default function ProjectPage() {
                     : " · brief in progress")}
               </strong>
             </div>
+          </section>
+
+          {/* LATEST MESSAGE */}
+
+          <section className="section latest-section">
+            <div className="eyebrow">
+              LATEST MESSAGE
+            </div>
+
+            {latestPreview ? (
+              <button
+                className="latest-message"
+                onClick={() => setTab("chat")}
+              >
+                <span className="latest-text">
+                  <strong>{latestPreview.from}: </strong>
+                  {latestPreview.text}
+                </span>
+
+                <span className="latest-meta">
+                  {activityDate(latestPreview.createdAt)} · OPEN CHAT ↗
+                </span>
+              </button>
+            ) : (
+              <button
+                className="latest-message"
+                onClick={() => setTab("chat")}
+              >
+                <span className="latest-text">
+                  No messages yet. Say hello to DICI.
+                </span>
+
+                <span className="latest-meta">
+                  OPEN CHAT ↗
+                </span>
+              </button>
+            )}
           </section>
 
           {/* PROJECT BRIEF */}
@@ -1668,13 +1759,35 @@ function ProjectFileCard({
   preflightLocked: boolean;
   onPreflight: () => void;
 }) {
-  const extension = getFileExtension(
+  const extension = fileExtension(
     file.file_name
   );
 
   const size = formatFileSize(
     file.file_size
   );
+
+  const uploaded = activityDate(
+    file.created_at
+  );
+
+  const download = downloadHref(
+    file.url,
+    file.file_name
+  );
+
+  /* an image that cannot be drawn (expired link, broken file) falls back to
+     the extension tile instead of a broken picture */
+  const [thumbFailed, setThumbFailed] =
+    useState(false);
+
+  const showThumbnail =
+    Boolean(file.url) &&
+    !thumbFailed &&
+    canShowThumbnail(
+      file.file_type,
+      file.file_name
+    );
 
   const canAnalyze =
     file.file_type === "image/jpeg" ||
@@ -1738,42 +1851,83 @@ function ProjectFileCard({
 
   return (
     <div className="file-card-shell">
-      <button
+      <div
         className={
           file.url
             ? "file-card"
             : "file-card file-card-disabled"
         }
-        onClick={openFile}
-        disabled={!file.url}
       >
-        <div className="file-icon">
-          {extension || "FILE"}
-        </div>
-
-        <div className="file-info">
-          <div className="file-name">
-            {file.file_name}
-          </div>
-
-          <div className="file-meta">
-            <span>
-              {file.category.toUpperCase()}
-            </span>
-
-            {size && (
-              <>
-                <i>·</i>
-                <span>{size}</span>
-              </>
+        <button
+          className="file-main"
+          onClick={openFile}
+          disabled={!file.url}
+          aria-label={`Open ${file.file_name}`}
+        >
+          <div className="file-icon">
+            {showThumbnail ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={file.url as string}
+                alt=""
+                loading="lazy"
+                onError={() =>
+                  setThumbFailed(true)
+                }
+              />
+            ) : (
+              extension
             )}
           </div>
-        </div>
 
-        <div className="file-open">
-          ↗
-        </div>
-      </button>
+          <div className="file-info">
+            <div className="file-name">
+              {file.file_name}
+            </div>
+
+            <div className="file-meta">
+              <span>
+                {file.category.toUpperCase()}
+              </span>
+
+              {size && (
+                <>
+                  <i>·</i>
+                  <span>{size}</span>
+                </>
+              )}
+
+              {uploaded && (
+                <>
+                  <i>·</i>
+                  <span>{uploaded}</span>
+                </>
+              )}
+            </div>
+          </div>
+        </button>
+
+        {download && (
+          <a
+            className="file-download"
+            href={download}
+            download={file.file_name}
+            aria-label={`Download ${file.file_name}`}
+          >
+            SAVE
+          </a>
+        )}
+
+        {file.url && (
+          <button
+            className="file-open"
+            onClick={openFile}
+            aria-label={`Open ${file.file_name} in a new tab`}
+          >
+            ↗
+          </button>
+        )}
+      </div>
 
       {canAnalyze && (
         <div className="intelligence-panel">
@@ -2102,54 +2256,6 @@ function AnalysisItem({
 |--------------------------------------------------------------------------
 */
 
-function getFileExtension(
-  fileName: string
-) {
-  const parts = fileName.split(".");
-
-  if (parts.length < 2) {
-    return "FILE";
-  }
-
-  return (
-    parts.pop()?.toUpperCase() ||
-    "FILE"
-  );
-}
-
-function formatFileSize(
-  bytes: number | null
-) {
-  if (
-    bytes === null ||
-    bytes === undefined
-  ) {
-    return "";
-  }
-
-  if (bytes < 1024) {
-    return `${bytes} B`;
-  }
-
-  const kilobytes = bytes / 1024;
-
-  if (kilobytes < 1024) {
-    return `${kilobytes.toFixed(1)} KB`;
-  }
-
-  const megabytes =
-    kilobytes / 1024;
-
-  if (megabytes < 1024) {
-    return `${megabytes.toFixed(1)} MB`;
-  }
-
-  const gigabytes =
-    megabytes / 1024;
-
-  return `${gigabytes.toFixed(1)} GB`;
-}
-
 function BriefItem({
   label,
   value,
@@ -2174,11 +2280,25 @@ function TimelineStep({
   label,
   active,
   done = false,
+  state,
+  date,
 }: {
   label: string;
   active: boolean;
   done?: boolean;
+  state: "done" | "now" | "upcoming";
+  date: string;
 }) {
+  /* what a screen reader hears: the step, and when it happened */
+  const spoken =
+    state === "now"
+      ? "Current step"
+      : state === "done" && date
+      ? `Completed ${date}`
+      : state === "done"
+      ? "Completed"
+      : "Not started yet";
+
   return (
     <div className="timeline-step" aria-current={active ? "step" : undefined}>
       <span
@@ -2200,6 +2320,20 @@ function TimelineStep({
       >
         {label}
       </strong>
+
+      {/* The visible date repeats what the screen reader hears, so it is
+          hidden from it. The empty span keeps every step the same height. */}
+      {state === "now" ? (
+        <span className="timeline-date now" aria-hidden="true">
+          Now
+        </span>
+      ) : (
+        <span className="timeline-date" aria-hidden="true">
+          {date}
+        </span>
+      )}
+
+      <span className="sr-only">{spoken}</span>
     </div>
   );
 }
@@ -2503,6 +2637,57 @@ const styles = `
     color: #111111;
   }
 
+  /* the date each step was reached, under the step name */
+  .timeline-date {
+    display: block;
+    margin-top: 6px;
+    padding: 0 2px;
+    color: #71717a;
+    font-size: 10px;
+    line-height: 1.25;
+    letter-spacing: 0.02em;
+    overflow-wrap: anywhere;
+  }
+
+  .timeline-date.now {
+    color: #111111;
+    font-weight: 700;
+  }
+
+  .latest-message {
+    margin-top: 14px;
+    width: 100%;
+    padding: 14px 16px;
+    display: block;
+    border: 0;
+    border-radius: 16px;
+    background: #f4f4f5;
+    color: #111111;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .latest-message:hover {
+    background: #ececee;
+  }
+
+  .latest-text {
+    display: block;
+    font-size: 14px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+
+  .latest-meta {
+    margin-top: 8px;
+    display: block;
+    color: #52525b;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+  }
+
   .timeline-line.done {
     background: #0a0a0a;
   }
@@ -2718,6 +2903,8 @@ const styles = `
   .file-list {
     margin-top: 30px;
     display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+    align-items: start;
     gap: 10px;
   }
 
@@ -2727,13 +2914,12 @@ const styles = `
     padding: 16px;
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 10px;
     border: 1px solid #e1e1e5;
     border-radius: 17px;
     background: #ffffff;
     color: #111111;
     text-align: left;
-    cursor: pointer;
     transition:
       border-color 0.15s ease,
       transform 0.15s ease;
@@ -2745,7 +2931,6 @@ const styles = `
   }
 
   .file-card-disabled {
-    cursor: default;
     opacity: 0.65;
   }
 
@@ -2754,10 +2939,48 @@ const styles = `
     transform: none;
   }
 
+  .file-main {
+    min-width: 0;
+    flex: 1;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .file-main:disabled {
+    cursor: default;
+  }
+
+  .file-download {
+    flex: 0 0 auto;
+    padding: 8px 11px;
+    border: 1px solid #111111;
+    border-radius: 999px;
+    background: #111111;
+    color: #ffffff;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-decoration: none;
+  }
+
+  .file-download:hover {
+    background: #c3f23d;
+    color: #111111;
+  }
+
   .file-icon {
-    width: 50px;
-    height: 50px;
-    flex: 0 0 50px;
+    width: 64px;
+    height: 64px;
+    flex: 0 0 64px;
+    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2786,8 +3009,9 @@ const styles = `
   .file-meta {
     margin-top: 8px;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 7px;
+    gap: 4px 7px;
     color: #3f3f46;
     font-size: 9px;
     letter-spacing: 0.08em;
@@ -2797,12 +3021,23 @@ const styles = `
     font-style: normal;
   }
 
+  .file-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
   .file-open {
     width: 32px;
     flex: 0 0 32px;
+    padding: 0;
+    border: 0;
+    background: none;
     color: #3f3f46;
     font-size: 18px;
     text-align: center;
+    cursor: pointer;
   }
 
   .file-card-shell {
@@ -3330,6 +3565,11 @@ const styles = `
       font-size: 10px;
     }
 
+    .timeline-date {
+      margin-top: 4px;
+      font-size: 9px;
+    }
+
     .hero-specs {
       gap: 10px 20px;
       font-size: 15px;
@@ -3507,11 +3747,15 @@ const styles = `
     }
 
     .file-icon {
-      width: 44px;
-      height: 44px;
-      flex-basis: 44px;
+      width: 52px;
+      height: 52px;
+      flex-basis: 52px;
       border-radius: 11px;
       font-size: 9px;
+    }
+
+    .file-main {
+      gap: 12px;
     }
 
     .file-name {
@@ -3910,6 +4154,7 @@ const styles = `
   }
 
   .workspace[data-tab="files"] .status-section,
+  .workspace[data-tab="files"] .latest-section,
   .workspace[data-tab="files"] .brief-section {
     display: none;
   }
@@ -3920,6 +4165,7 @@ const styles = `
   }
 
   .workspace[data-tab="activity"] .status-section,
+  .workspace[data-tab="activity"] .latest-section,
   .workspace[data-tab="activity"] .brief-section,
   .workspace[data-tab="activity"] .files-section {
     display: none;
@@ -3990,6 +4236,12 @@ const styles = `
 
   /* wide screens: the chat sits beside the project, always visible */
   @media (min-width: 1024px) {
+    /* the chat is already open beside the page, so the preview would only
+       point at what is on screen */
+    .latest-section {
+      display: none;
+    }
+
     .content {
       width: min(1280px, calc(100% - 64px));
     }

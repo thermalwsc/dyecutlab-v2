@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowIcon } from "../updates/Icons";
 import { START_PROJECT_HREF } from "../../lib/contact";
+import type { MessagePreview } from "../../lib/messagePreview";
 import { JOURNEY_STEPS, REQUEST_STEPS, customerStatusLabel, journeyStepIndex, nextStepFor, requestInfoFor } from "../../lib/projectJourney";
 export type ProjectRow = {
   id: string;
@@ -71,7 +72,7 @@ function JourneyBar({ status }: { status: string | null }) {
   );
 }
 
-export function ProjectCard({ project }: { project: ProjectRow }) {
+export function ProjectCard({ project, latest = null }: { project: ProjectRow; latest?: MessagePreview | null }) {
   const next = nextStepFor(project.status);
   const href = `/project/${encodeURIComponent(project.project_number)}`;
   const needsYou = next.tone === "action";
@@ -100,6 +101,26 @@ export function ProjectCard({ project }: { project: ProjectRow }) {
         <p className="text-[15px] font-extrabold">{next.headline}</p>
         <p className="mt-0.5 text-[14px] leading-snug text-zinc-700">{next.detail}</p>
       </div>
+
+      {next.tone !== "done" && (
+        <Link
+          href={`${href}?tab=chat`}
+          className="mt-4 block rounded-2xl bg-zinc-100 px-4 py-3 transition hover:bg-zinc-200"
+        >
+          <span className="flex items-center justify-between gap-3 text-[12px] font-extrabold uppercase tracking-[0.08em] text-zinc-500">
+            <span>Latest message</span>
+            {latest && <span className="font-semibold normal-case tracking-normal">{formatDate(latest.createdAt)}</span>}
+          </span>
+          {latest ? (
+            <span className="mt-1 block text-[14px] leading-snug text-zinc-800">
+              <span className="font-extrabold">{latest.from}: </span>
+              {latest.text}
+            </span>
+          ) : (
+            <span className="mt-1 block text-[14px] leading-snug text-zinc-600">No messages yet. Say hello to DICI.</span>
+          )}
+        </Link>
+      )}
 
       <div className={`mt-4 grid gap-2 ${next.tone === "done" ? "" : "sm:grid-cols-[1fr_auto]"}`}>
         <Link

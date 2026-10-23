@@ -5,6 +5,7 @@ import { Footer, Header } from "../updates/SiteChrome";
 import { ArrowIcon, Burst, ChatDotsIcon } from "../updates/Icons";
 import { CONTACT, START_PROJECT_HREF } from "../../lib/contact";
 import { nextStepFor } from "../../lib/projectJourney";
+import { latestByProject, type MessagePreview } from "../../lib/messagePreview";
 import { ROLE_LABELS } from "../../lib/auth/roles";
 import { requireRole } from "../../lib/auth/guard";
 import { getServerSupabase } from "../../lib/supabase/server";
@@ -60,6 +61,21 @@ export default async function AccountPage() {
   }
 
   const projects = (data ?? []) as ProjectRow[];
+
+  /* The newest chat message of each project, for the one-line preview on its
+     card. Read with the customer's own session, so the database rules decide
+     what is visible; a failure just means no preview. */
+  let latestMessages: Record<string, MessagePreview> = {};
+  if (projects.length > 0) {
+    const { data: messageRows, error: messageError } = await supabase
+      .from("project_messages")
+      .select("project_id, role, message, created_at")
+      .in("project_id", projects.map((p) => p.id))
+      .order("created_at", { ascending: false })
+      .limit(400);
+    if (messageError) console.error("ACCOUNT MESSAGES:", messageError.message);
+    latestMessages = latestByProject(messageRows);
+  }
   const delivered = projects.filter((p) => (p.status || "").toLowerCase() === "delivered");
   const active = projects.filter((p) => (p.status || "").toLowerCase() !== "delivered");
   const needsYou = active.filter((p) => nextStepFor(p.status).tone === "action");
@@ -216,7 +232,7 @@ export default async function AccountPage() {
             ) : (
               <ul className="mt-4 grid gap-4">
                 {active.map((project) => (
-                  <ProjectCard key={project.id} project={project} />
+                  <ProjectCard key={project.id} project={project} latest={latestMessages[project.id] ?? null} />
                 ))}
               </ul>
             )}
@@ -229,7 +245,7 @@ export default async function AccountPage() {
                 </summary>
                 <ul className="mt-4 grid gap-4">
                   {delivered.map((project) => (
-                    <ProjectCard key={project.id} project={project} />
+                    <ProjectCard key={project.id} project={project} latest={latestMessages[project.id] ?? null} />
                   ))}
                 </ul>
               </details>
