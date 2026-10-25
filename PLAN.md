@@ -2,7 +2,7 @@
 
 Custom packaging made simple. A customer describes an idea, DCL turns it into a factory-ready specification, a verified quote, payment, proof, production and delivery. This file is the engineering view of the 12-week plan the client sees (`F:\DYECUTLAB-Work\12-Week-Plan\index.html`). The task log is `F:\DYECUTLAB-Work\TaskLogHTML\index.html`.
 
-Last updated: Wed, Oct 21, 2026 (week 4).
+Last updated: Sun, Oct 25, 2026 (week 4).
 
 ---
 
@@ -107,7 +107,7 @@ Overall about 32% of the plan.
 | Limits on AI and upload requests: tune the numbers (the monthly cap is set) | Done, tuned from real usage | Fri, 0.5 h |
 
 ### Week 4 detail
-Project page with a live progress tracker, files and messages (about 40%); DICI app restyled to the lime and black brand (the project page and chat are done, the intake page is not); email updates when a project changes stage; version-controlled database setup (done: every change is a migration file with a rolled-back check); hand-test the stage history and the factory's status button with real team and factory accounts (moved from week 3, about 0.5 h; done: confirmed with a team and a factory account); a final live run on the live site as a brand-new customer before the early beta (Friday, about 1 h); archive the test projects before real customers are invited (later in the week, about 0.5 h, archive only).
+Project page with a live progress tracker, files and messages (done: stage dates from the Activity history, a files grid with thumbnails and downloads, the latest chat message on the project and on each dashboard card); DICI app restyled to the lime and black brand (done, including the account emails sent from DYE CUT LAB through Brevo); email updates when a project changes stage (done); version-controlled database setup (done: every change is a migration file with a rolled-back check); hand-test the stage history and the factory's status button (done); archive the test projects (done Oct 24: 58 hidden with the client's OK, nothing deleted); a final live run on the live site as a brand-new customer before the early beta (open, about 1 h).
 
 ### Weeks 5–12 (summary)
 - **5 Quoting engine:** estimate from style, size, quantity, finish, tooling, freight and margin; always labeled as an estimate; quote versions per project; editable pricing tables; quote PDF.
@@ -127,11 +127,10 @@ Multiple factories with RFQs, bids and comparison; white label for factories, br
 ## 4. Open items
 
 **Developer**
-- Week 4 testing: with a team account change a project's stage and check the Activity tab; with a factory account press the status button and check it works and is named "by the factory".
-- Log Friday in the task log and plan (hours to confirm).
+- Final live run on the live site as a brand-new customer (Google sign-in, chat, Skip for now, team alert email, dashboard, tracker, file upload), then log Wed–Fri in the task log and write invoice INV-2026-004 (hours to confirm).
 - Before the live site uses the team alert: set the real `STAFF_NOTIFY_EMAIL` and `STAFF_NOTIFY_PHONE` in Vercel, remove the temporary test values from `.env.local`, and ask Gilbert to text the business line once so the text alert can be tried from a US number. Run migrations 20261015000000, 20261015010000 and 20261015020000 on the live Supabase project if it is a different one.
-- Optional, to be confirmed with the client: a "Chat with DICI" button on dashboard project cards (about 30 min); keep or remove the "Text us" option now that the chat works.
-- Revoke the old OpenAI key ending DGcA; add the Google Search Console TXT record; Apple Developer enrollment; redeploy the plan and task log to Netlify; `git push` so Vercel gets the latest commits.
+- To be confirmed with the client: keep or remove the "Text us" option now that the chat works.
+- Revoke the old OpenAI key ending DGcA; Apple Developer enrollment; redeploy the plan and task log to Netlify; `git push` so Vercel gets the latest commits.
 
 **Client (Gilbert)**
 - Done: how units become pieces, confirmed by Gilbert on Oct 15. One unit is 128 pieces and bulk orders are multiples of 100, so the whole order rounds up to the next 100 (5 units = 700, 10 units = 1,300), and each flavor is also a multiple of 100. It lives in `lib/production.ts`, used by both chats and both AI prompts, with tests.

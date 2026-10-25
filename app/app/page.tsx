@@ -64,7 +64,7 @@ const EMPTY_PROJECT: ProjectData = {
   productType: "",
   units: null,
   quantity: null,
-  useType: "FLOWER",
+  useType: "",
   flavorCount: 0,
   flavorSplit: 0,
   artworkStatus: "",
@@ -892,7 +892,7 @@ function Conversation({
       units: next.units,
       quantity: next.quantity,
       product_type: next.productType || null,
-      use_type: next.useType || "FLOWER",
+      use_type: next.useType || null,
       flavor_count: next.flavorCount || null,
       flavor_split: next.flavorSplit || null,
       artwork_status: next.artworkStatus || null,
@@ -1072,7 +1072,7 @@ function Conversation({
           extracted.artworkStatus || baseProject.artworkStatus,
         size: extracted.size || baseProject.size,
         closure: extracted.closure || baseProject.closure,
-        useType: baseProject.useType || "FLOWER",
+        useType: baseProject.useType,
       };
 
       const saved = await ensureProject(next);
@@ -1516,7 +1516,7 @@ function Conversation({
                     : "TBD"
                 }
               />
-              <Spec label="USE" value={project.useType || "FLOWER"} />
+              <Spec label="USE" value={project.useType || "NOT SET"} />
               <Spec
                 label="REFERENCE"
                 value={referenceImage ? "✓ RECEIVED" : "NOT ADDED"}
