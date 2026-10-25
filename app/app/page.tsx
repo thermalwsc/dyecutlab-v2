@@ -12,7 +12,7 @@ import { questionKindFromText } from "../../lib/intakeQuestions";
 import { readRememberedClient } from "../../lib/rememberedClient";
 import { summaryRows } from "../../lib/intakeSummary";
 import { toRequestHistory } from "../../lib/chatHistory";
-import { PIECES_PER_UNIT, calculateProduction, roundOrderQuantity } from "../../lib/production";
+import { PIECES_PER_UNIT, calculateProduction, roundOrderQuantity, unitWord } from "../../lib/production";
 import { uploadErrorMessage } from "../../lib/chatErrors";
 
 type Stage = "home" | "capture" | "conversation";
@@ -1337,7 +1337,7 @@ function Conversation({
 
                   {unitConversion && (
                     <p className="mt-3 inline-block rounded-full bg-black px-3 py-1.5 text-[11px] font-bold tracking-[0.04em] text-[#c2f23a]">
-                      {unitConversion.units.toLocaleString()} UNITS × {PIECES_PER_UNIT} PCS ={" "}
+                      {unitConversion.units.toLocaleString()} {unitWord(unitConversion.units).toUpperCase()} × {PIECES_PER_UNIT} PCS ={" "}
                       {unitConversion.rawPieces.toLocaleString()} PCS
                       {unitConversion.orderPieces
                         ? ` · PRODUCTION ${unitConversion.orderPieces.toLocaleString()} PCS`
@@ -1378,10 +1378,10 @@ function Conversation({
               <button
                 key={units}
                 disabled={saving}
-                onClick={() => sendQuickAnswer(`${units} units`)}
+                onClick={() => sendQuickAnswer(`${units} ${unitWord(units)}`)}
                 className={CHIP}
               >
-                {units} UNITS
+                {units} {unitWord(units).toUpperCase()}
               </button>
             ))}
           </div>

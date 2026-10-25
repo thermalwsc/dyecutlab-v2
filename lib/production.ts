@@ -48,6 +48,11 @@ export function calculateProduction(units: number | null | undefined, flavorCoun
    smallest whole number of units whose ordered total is at least that many
    pieces. 200 pieces = 1 unit (ordered as 200), 300 = 2 units (ordered as 300),
    1,000 = 8 units (ordered as 1,100). Nothing usable gives 0. */
+/* "unit" for exactly one, "units" for everything else: 1 unit, 5 units. */
+export function unitWord(units: number) {
+  return units === 1 ? "unit" : "units";
+}
+
 export function unitsForPieces(pieces: number | null | undefined) {
   if (!pieces || !Number.isFinite(pieces) || pieces <= 0) return 0;
   /* The ordered total is a multiple of 100, so first ask for the hundreds that

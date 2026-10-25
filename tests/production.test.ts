@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { adjustQuantityForFlavors, calculateProduction, productionRuleText, roundOrderQuantity, unitsForPieces } from "../lib/production.ts";
+import { adjustQuantityForFlavors, calculateProduction, productionRuleText, roundOrderQuantity, unitsForPieces, unitWord } from "../lib/production.ts";
 
 /* The client's own examples (Oct 15, 2026): 5 units is 700, 10 units is 1,300. */
 test("the client's examples", () => {
@@ -83,4 +83,11 @@ test("the rule told to the AI matches what the code does", () => {
   assert.match(text, /our team can look at special requests/);
   assert.match(text, /Never open your reply with "Yes", "That works" or "Sure"/);
   assert.match(text, /The smallest order is 200 pieces, so 128 would be produced as 200/);
+});
+
+test("one is a unit, everything else is units", () => {
+  assert.equal(unitWord(1), "unit");
+  assert.equal(unitWord(0), "units");
+  assert.equal(unitWord(2), "units");
+  assert.equal(unitWord(50), "units");
 });
