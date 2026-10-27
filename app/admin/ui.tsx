@@ -45,6 +45,7 @@ const TABS = [
   { href: "/admin/requests", label: "Requests" },
   { href: "/admin/projects", label: "Projects" },
   { href: "/admin/factories", label: "Factories" },
+  { href: "/admin/pricing", label: "Pricing" },
 ];
 
 export function AdminTabs({ active, isAdmin }: { active: string; isAdmin: boolean }) {
