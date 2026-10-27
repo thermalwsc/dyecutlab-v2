@@ -20,7 +20,7 @@ Last updated: Mon, Oct 26, 2026 (end of week 4).
 | `dcl_staff`, `dcl_admin` | Everything | `/admin`, `/admin/projects/[id]`, any project page |
 | `factory` | Only projects assigned to their factory | `/factory`, `/factory/projects/[number]` |
 
-**Main data (Postgres, all with RLS).** `profiles`, `factories`, `clients`, `projects` (UUID ids, `project_number` such as DCL-00060), `project_messages`, `project_files`, `project_file_analyses` (File Intelligence for images), `project_file_preflights` (PDF checks), `quote_requests`, `usage_daily` (AI and upload counters), and the quoting engine's pricing tables `pricing_products`, `pricing_product_tiers`, `pricing_finishes`, `pricing_tooling`, `pricing_freight`, `pricing_margins`, `pricing_lead_times` (team only, start empty; migration 20261026000000, check in `supabase/tests/pricing_tables_checks.sql`).
+**Main data (Postgres, all with RLS).** `profiles`, `factories`, `clients`, `projects` (UUID ids, `project_number` such as DCL-00060), `project_messages`, `project_files`, `project_file_analyses` (File Intelligence for images), `project_file_preflights` (PDF checks), `quote_requests`, `usage_daily` (AI and upload counters), and the quoting engine's pricing tables `pricing_products`, `pricing_product_tiers`, `pricing_finishes`, `pricing_tooling`, `pricing_freight`, `pricing_margins`, `pricing_lead_times` (team only, start empty; migration 20261026000000, check in `supabase/tests/pricing_tables_checks.sql`); and `quote_versions` (customer-safe half, shown to the owner only after the team shows a version) with `quote_version_details` (private half, team only), saved through `save_quote_version()`, never edited or deleted (migration 20261028000000).
 
 **Access rules.** Helper functions `is_dcl_team()`, `my_factory_id()`, `can_access_project()`, `can_access_project_number()`, `can_edit_project_files()`. Factories can read but never change or delete customers' files. The service-role key is used only on the server after the session and role are checked.
 
@@ -128,7 +128,7 @@ Multiple factories with RFQs, bids and comparison; white label for factories, br
 
 **Developer**
 - Early intake beta (Oct 26): invite the first users once Gilbert names them; add the real US number as `STAFF_NOTIFY_PHONE` in Vercel when he has one.
-- Before the live site uses the team alert: set the real `STAFF_NOTIFY_EMAIL` and `STAFF_NOTIFY_PHONE` in Vercel, remove the temporary test values from `.env.local`, and ask Gilbert to text the business line once so the text alert can be tried from a US number. Run migration 20261026000000 (pricing tables) on the live Supabase project, then its check `supabase/tests/pricing_tables_checks.sql`.
+- Before the live site uses the team alert: set the real `STAFF_NOTIFY_EMAIL` and `STAFF_NOTIFY_PHONE` in Vercel, remove the temporary test values from `.env.local`, and ask Gilbert to text the business line once so the text alert can be tried from a US number. Run migration 20261028000000 (quote versions) on the live Supabase project, then its check `supabase/tests/quote_versions_checks.sql` (the pricing tables migration 20261026000000 and its check are already run).
 - To be confirmed with the client: keep or remove the "Text us" option now that the chat works.
 - Revoke the old OpenAI key ending DGcA; Apple Developer enrollment; redeploy the plan and task log to Netlify; `git push` so Vercel gets the latest commits.
 
