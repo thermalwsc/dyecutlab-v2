@@ -2,7 +2,7 @@
 
 Custom packaging made simple. A customer describes an idea, DCL turns it into a factory-ready specification, a verified quote, payment, proof, production and delivery. This file is the engineering view of the 12-week plan the client sees (`F:\DYECUTLAB-Work\12-Week-Plan\index.html`). The task log is `F:\DYECUTLAB-Work\TaskLogHTML\index.html`.
 
-Last updated: Sun, Oct 25, 2026 (week 4).
+Last updated: Mon, Oct 26, 2026 (end of week 4).
 
 ---
 
@@ -20,7 +20,7 @@ Last updated: Sun, Oct 25, 2026 (week 4).
 | `dcl_staff`, `dcl_admin` | Everything | `/admin`, `/admin/projects/[id]`, any project page |
 | `factory` | Only projects assigned to their factory | `/factory`, `/factory/projects/[number]` |
 
-**Main data (Postgres, all with RLS).** `profiles`, `factories`, `clients`, `projects` (UUID ids, `project_number` such as DCL-00060), `project_messages`, `project_files`, `project_file_analyses` (File Intelligence for images), `project_file_preflights` (PDF checks), `quote_requests`, `usage_daily` (AI and upload counters).
+**Main data (Postgres, all with RLS).** `profiles`, `factories`, `clients`, `projects` (UUID ids, `project_number` such as DCL-00060), `project_messages`, `project_files`, `project_file_analyses` (File Intelligence for images), `project_file_preflights` (PDF checks), `quote_requests`, `usage_daily` (AI and upload counters), and the quoting engine's pricing tables `pricing_products`, `pricing_product_tiers`, `pricing_finishes`, `pricing_tooling`, `pricing_freight`, `pricing_margins`, `pricing_lead_times` (team only, start empty; migration 20261026000000, check in `supabase/tests/pricing_tables_checks.sql`).
 
 **Access rules.** Helper functions `is_dcl_team()`, `my_factory_id()`, `can_access_project()`, `can_access_project_number()`, `can_edit_project_files()`. Factories can read but never change or delete customers' files. The service-role key is used only on the server after the session and role are checked.
 
@@ -92,7 +92,7 @@ Weeks are 25 h each, 300 h in total. Percentages are the share of a task that is
 | 11 | Private beta launch | Not started |
 | 12 | Observe, improve and plan next | Not started |
 
-Overall about 32% of the plan.
+Overall about 33% of the plan.
 
 ### Week 3 detail
 
@@ -107,7 +107,7 @@ Overall about 32% of the plan.
 | Limits on AI and upload requests: tune the numbers (the monthly cap is set) | Done, tuned from real usage | Fri, 0.5 h |
 
 ### Week 4 detail
-Project page with a live progress tracker, files and messages (done: stage dates from the Activity history, a files grid with thumbnails and downloads, the latest chat message on the project and on each dashboard card); DICI app restyled to the lime and black brand (done, including the account emails sent from DYE CUT LAB through Brevo); email updates when a project changes stage (done); version-controlled database setup (done: every change is a migration file with a rolled-back check); hand-test the stage history and the factory's status button (done); archive the test projects (done Oct 24: 58 hidden with the client's OK, nothing deleted); a final live run on the live site as a brand-new customer before the early beta (open, about 1 h).
+Project page with a live progress tracker, files and messages (done: stage dates from the Activity history, a files grid with thumbnails and downloads, the latest chat message on the project and on each dashboard card); DICI app restyled to the lime and black brand (done, including the account emails sent from DYE CUT LAB through Brevo); email updates when a project changes stage (done); version-controlled database setup (done: every change is a migration file with a rolled-back check); hand-test the stage history and the factory's status button (done); archive the test projects (done Oct 24: 58 hidden with the client's OK, nothing deleted); a final live run on the live site as a brand-new customer before the early beta (done Oct 25: passed). Week 4 is complete (25 h, invoice INV-2026-004); the early intake beta opens Oct 26.
 
 ### Weeks 5–12 (summary)
 - **5 Quoting engine:** estimate from style, size, quantity, finish, tooling, freight and margin; always labeled as an estimate; quote versions per project; editable pricing tables; quote PDF.
@@ -127,14 +127,15 @@ Multiple factories with RFQs, bids and comparison; white label for factories, br
 ## 4. Open items
 
 **Developer**
-- Final live run on the live site as a brand-new customer (Google sign-in, chat, Skip for now, team alert email, dashboard, tracker, file upload), then log Wed–Fri in the task log and write invoice INV-2026-004 (hours to confirm).
-- Before the live site uses the team alert: set the real `STAFF_NOTIFY_EMAIL` and `STAFF_NOTIFY_PHONE` in Vercel, remove the temporary test values from `.env.local`, and ask Gilbert to text the business line once so the text alert can be tried from a US number. Run migrations 20261015000000, 20261015010000 and 20261015020000 on the live Supabase project if it is a different one.
+- Early intake beta (Oct 26): invite the first users once Gilbert names them; add the real US number as `STAFF_NOTIFY_PHONE` in Vercel when he has one.
+- Before the live site uses the team alert: set the real `STAFF_NOTIFY_EMAIL` and `STAFF_NOTIFY_PHONE` in Vercel, remove the temporary test values from `.env.local`, and ask Gilbert to text the business line once so the text alert can be tried from a US number. Run migration 20261026000000 (pricing tables) on the live Supabase project, then its check `supabase/tests/pricing_tables_checks.sql`.
 - To be confirmed with the client: keep or remove the "Text us" option now that the chat works.
 - Revoke the old OpenAI key ending DGcA; Apple Developer enrollment; redeploy the plan and task log to Netlify; `git push` so Vercel gets the latest commits.
 
 **Client (Gilbert)**
 - Done: how units become pieces, confirmed by Gilbert on Oct 15. One unit is 128 pieces and bulk orders are multiples of 100, so the whole order rounds up to the next 100 (5 units = 700, 10 units = 1,300), and each flavor is also a multiple of 100. It lives in `lib/production.ts`, used by both chats and both AI prompts, with tests.
 - Done: the OpenAI monthly cap ($25, alert at $15) and a payment method are set.
+- To confirm against the blueprint (v0.3, `F:\DYECUTLAB-Work\DYE_CUT_LAB_DICI_Pitch_Blueprint.pdf`): (1) **Reorder** (journey step 14) is not planned; today delivered projects only get a "Start a similar project" link. (2) **Factory change notes** (page 9: record what a factory changed in artwork, price, material or timing, and why, to teach DICI later) are not in any week. (3) The blueprint puts the English and Chinese layer in weeks 1–2; this plan schedules it in week 7. The blueprint's beta measurements (page 19: time to estimate, quote turnaround, quote to payment, human minutes per order) are already in the week 11 beta dashboard.
 - By week 5: factory pricing data and margin rules. By week 6: a partner factory contact. By week 7: a Chinese speaker and a payment account (for example Stripe). By week 10: the first beta customers.
 
 ---
