@@ -22,6 +22,8 @@ import {
 } from "../../../lib/projectActivity";
 import { trackerSteps } from "../../../lib/stageDates";
 import { latestMessage, toPreview } from "../../../lib/messagePreview";
+import { describeCustomerVersion, type CustomerQuoteVersion } from "../../../lib/quoteVersions";
+import { ESTIMATES_IN_APP } from "../../../lib/siteFlags";
 import {
   canShowThumbnail,
   downloadHref,
@@ -265,6 +267,10 @@ export default function ProjectPage() {
   const [activityLoading, setActivityLoading] = useState(false);
   const [activityFailed, setActivityFailed] = useState(false);
 
+  /* the estimate the team has chosen to show; stays null while the site switch
+     ESTIMATES_IN_APP is off */
+  const [estimate, setEstimate] = useState<CustomerQuoteVersion | null>(null);
+
   /* one history request at a time; wantsActivityErrorRef is true when the
      Activity tab is waiting on it, so a failure is shown there */
   const activityInFlightRef = useRef(false);
@@ -398,6 +404,19 @@ export default function ProjectPage() {
     } finally {
       activityInFlightRef.current = false;
       setActivityLoading(false);
+    }
+  }
+
+  /* The newest estimate the team has shown to this customer (customer-safe
+     fields only). A failure changes nothing on screen. */
+  async function loadEstimate() {
+    try {
+      const response = await fetch(`/api/projects/${projectId}/estimate`, { cache: "no-store" });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data) return;
+      setEstimate(data.estimate ?? null);
+    } catch (error) {
+      console.error("ESTIMATE LOAD ERROR:", error);
     }
   }
 
@@ -547,6 +566,7 @@ export default function ProjectPage() {
     /* the tracker shows when each step was reached, so the history comes
        with the page; a failure here changes nothing on screen */
     loadActivity(true);
+    if (ESTIMATES_IN_APP) void loadEstimate();
   }, [projectId]);
 
   /*
@@ -990,6 +1010,8 @@ export default function ProjectPage() {
 
   /* the newest chat message, for the preview under the status; messages that
      are only on screen and not saved yet have no date and are skipped */
+  const estimateText = estimate ? describeCustomerVersion(estimate) : null;
+
   const latestPreview = toPreview(
     latestMessage(
       messages
@@ -1269,6 +1291,54 @@ export default function ProjectPage() {
               </button>
             )}
           </section>
+
+          {/* YOUR ESTIMATE (only once the site switch is on) */}
+
+          {ESTIMATES_IN_APP && (
+            <section className="section estimate-section">
+              <div className="eyebrow">
+                YOUR ESTIMATE
+              </div>
+
+              {estimateText ? (
+                <div className="estimate-card">
+                  <div className="estimate-total">
+                    {estimateText.total}
+                  </div>
+
+                  <div className="estimate-sub">
+                    {estimateText.perPiece} · {estimateText.quantity}
+                  </div>
+
+                  {estimateText.lead && (
+                    <div className="estimate-line">
+                      {estimateText.lead}
+                    </div>
+                  )}
+
+                  {estimateText.included && (
+                    <div className="estimate-line">
+                      {estimateText.included}
+                    </div>
+                  )}
+
+                  {estimateText.notIncluded && (
+                    <div className="estimate-line">
+                      {estimateText.notIncluded}
+                    </div>
+                  )}
+
+                  <div className="estimate-notice">
+                    {estimateText.notice} · {estimateText.version}
+                  </div>
+                </div>
+              ) : (
+                <p className="estimate-empty">
+                  Our team will send your estimate here.
+                </p>
+              )}
+            </section>
+          )}
 
           {/* PROJECT BRIEF */}
 
@@ -2652,6 +2722,47 @@ const styles = `
   .timeline-date.now {
     color: #111111;
     font-weight: 700;
+  }
+
+  .estimate-card {
+    margin-top: 14px;
+    padding: 18px 18px 16px;
+    border-radius: 16px;
+    background: #f4f4f5;
+  }
+
+  .estimate-total {
+    font-size: 34px;
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+
+  .estimate-sub {
+    margin-top: 6px;
+    color: #3f3f46;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .estimate-line {
+    margin-top: 8px;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  .estimate-notice {
+    margin-top: 12px;
+    color: #52525b;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .estimate-empty {
+    margin: 14px 0 0;
+    font-size: 14px;
+    color: #52525b;
   }
 
   .latest-message {
@@ -4155,6 +4266,7 @@ const styles = `
 
   .workspace[data-tab="files"] .status-section,
   .workspace[data-tab="files"] .latest-section,
+  .workspace[data-tab="files"] .estimate-section,
   .workspace[data-tab="files"] .brief-section {
     display: none;
   }
@@ -4166,6 +4278,7 @@ const styles = `
 
   .workspace[data-tab="activity"] .status-section,
   .workspace[data-tab="activity"] .latest-section,
+  .workspace[data-tab="activity"] .estimate-section,
   .workspace[data-tab="activity"] .brief-section,
   .workspace[data-tab="activity"] .files-section {
     display: none;

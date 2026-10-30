@@ -144,3 +144,35 @@ test("no readable version gives nothing", () => {
   assert.equal(latestCustomerVersion(null), null);
   assert.equal(latestCustomerVersion([row({ sell_total: "oops" })]), null);
 });
+
+import { describeCustomerVersion } from "../lib/quoteVersions.ts";
+
+test("the customer's estimate card reads in plain words, with shipping explained", () => {
+  const view = toCustomerVersion(row());
+  assert.ok(view);
+  const text = describeCustomerVersion(view);
+
+  assert.equal(text.heading, "Your estimate");
+  assert.equal(text.total, "$1,192.31");
+  assert.equal(text.perPiece, "$2.38 per piece");
+  assert.equal(text.quantity, "500 pieces");
+  assert.equal(text.lead, "About 23 days from approval");
+  assert.equal(text.included, "Includes the product and your finishes.");
+  assert.equal(text.notIncluded, "Shipping is added after the estimate.");
+  assert.equal(text.notice, ESTIMATE_NOTICE);
+  assert.equal(text.version, "Version 1");
+});
+
+test("the card never shows raw codes, and leaves out what is missing", () => {
+  const view = toCustomerVersion(row({ includes: ["product", "finishes", "tooling"], excludes: [], lead_days: null }));
+  assert.ok(view);
+  const text = describeCustomerVersion(view);
+  assert.equal(text.included, "Includes the product, your finishes and tooling.");
+  assert.equal(text.notIncluded, null);
+  assert.equal(text.lead, null);
+  assert.ok(!JSON.stringify(text).includes("_"), JSON.stringify(text));
+
+  const bare = toCustomerVersion(row({ includes: [], excludes: [] }));
+  assert.ok(bare);
+  assert.equal(describeCustomerVersion(bare).included, "");
+});

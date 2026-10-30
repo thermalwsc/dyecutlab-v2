@@ -26,8 +26,10 @@
      smallest order, or a finish that needs more pieces gives no estimate (ok
      false) and the team prices it by hand.
    - Freight needs the shipment's weight, volume or pallets. Without it freight
-     is left out and the estimate says so (excludes). The margin is applied to
-     everything in the cost, freight included; confirm this with the client.
+     is left out and the estimate says so (excludes). The client confirmed that
+     shipping is added last, not in the instant estimate, and that it carries
+     the margin like everything else (client, Oct 29, 2026), so the margin is
+     applied to everything in the cost, freight included.
    - Every figure is rounded to the cent line by line, so the lines always add up
      to the total shown.
    - It is always an estimate: ESTIMATE_NOTICE travels with every result, and

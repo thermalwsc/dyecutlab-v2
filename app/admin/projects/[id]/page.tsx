@@ -10,6 +10,7 @@ import { ADMIN_MESSAGES } from "../../messages";
 import { projectStatusLabel } from "../../statuses";
 import { AdminTabs, BTN, BTN_DANGER, BTN_GHOST, Banner, FIELD, LABEL, Panel, Pill, formatDate, param, type SearchParams } from "../../ui";
 import ProjectFields from "../ProjectForm";
+import EstimatePanel from "./EstimatePanel";
 
 export const metadata: Metadata = { title: "Project — DYE CUT LAB", robots: { index: false } };
 
@@ -43,6 +44,12 @@ export default async function ProjectDetail({
   ]);
 
   const isAdmin = role === "dcl_admin";
+  const why = param(query, "why").slice(0, 240);
+  const bannerCopy = {
+    ...ADMIN_MESSAGES,
+    ...(why ? { estimate_failed: why } : {}),
+    ...(param(query, "ok") === "estimate_saved" ? { estimate_saved: `Estimate saved as version ${param(query, "version") || ""}.`.replace(" .", ".") } : {}),
+  };
   const confirming = param(query, "confirm") === "delete";
   const activeFactories = (factories.data ?? []).filter((f) => f.active || f.id === project.factory_id);
 
@@ -53,7 +60,7 @@ export default async function ProjectDetail({
       intro={`${project.title} · created ${formatDate(project.created_at)}`}
     >
       <AdminTabs active="/admin/projects" isAdmin={isAdmin} />
-      <Banner params={query} copy={ADMIN_MESSAGES} />
+      <Banner params={query} copy={bannerCopy} />
       <div className="mt-4 flex flex-wrap items-center gap-3 text-[14px]">
         <Link href="/admin/projects" className="font-bold underline underline-offset-2">
           ← All projects
@@ -66,15 +73,19 @@ export default async function ProjectDetail({
       </div>
 
       <div className="mt-4 grid gap-6 lg:grid-cols-[1.4fr_1fr] lg:items-start">
-        <Panel title="Details">
-          <form action={updateProject} className="grid gap-5">
-            <input type="hidden" name="id" value={project.id} />
-            <ProjectFields values={project} />
-            <button type="submit" className={BTN}>
-              Save changes
-            </button>
-          </form>
-        </Panel>
+        <div className="grid gap-6">
+          <Panel title="Details">
+            <form action={updateProject} className="grid gap-5">
+              <input type="hidden" name="id" value={project.id} />
+              <ProjectFields values={project} />
+              <button type="submit" className={BTN}>
+                Save changes
+              </button>
+            </form>
+          </Panel>
+
+          <EstimatePanel project={{ id: project.id, quantity: project.quantity, product_type: project.product_type }} params={query} supabase={supabase} />
+        </div>
 
         <div className="grid gap-6">
           <Panel title="Customer and factory" intro="Who owns the project, and which factory makes it.">

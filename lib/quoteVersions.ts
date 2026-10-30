@@ -124,3 +124,51 @@ export function latestCustomerVersion(rows: QuoteVersionRow[] | null | undefined
   if (readable.length === 0) return null;
   return readable.reduce((best, version) => (version.version > best.version ? version : best));
 }
+
+/* ---------------------------------------------------------------------------
+   The words on the customer's estimate card. Plain language only: no codes, and
+   shipping is explained, because it is added after the estimate (client, Oct 29). */
+
+const INCLUDED_WORDS: Record<string, string> = {
+  product: "the product",
+  finishes: "your finishes",
+  tooling: "tooling",
+  freight: "shipping",
+};
+
+function joinWords(words: string[]) {
+  if (words.length <= 1) return words.join("");
+  return `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
+}
+
+export type EstimateCardText = {
+  heading: string;
+  total: string;
+  perPiece: string;
+  quantity: string;
+  lead: string | null;
+  included: string;
+  notIncluded: string | null;
+  notice: string;
+  version: string;
+};
+
+const money = (value: number, digits: number) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
+
+export function describeCustomerVersion(view: CustomerQuoteVersion): EstimateCardText {
+  const included = view.includes.map((key) => INCLUDED_WORDS[key]).filter(Boolean);
+  const excluded = view.excludes.filter((key) => key === "freight");
+
+  return {
+    heading: "Your estimate",
+    total: money(view.total, 2),
+    perPiece: `${money(view.perPiece, 2)} per piece`,
+    quantity: `${view.quantity.toLocaleString("en-US")} pieces`,
+    lead: view.leadDays && view.leadDays > 0 ? `About ${view.leadDays} days from approval` : null,
+    included: included.length > 0 ? `Includes ${joinWords(included)}.` : "",
+    notIncluded: excluded.length > 0 ? "Shipping is added after the estimate." : null,
+    notice: view.notice,
+    version: `Version ${view.version}`,
+  };
+}
