@@ -2,7 +2,7 @@
 
 Custom packaging made simple. A customer describes an idea, DCL turns it into a factory-ready specification, a verified quote, payment, proof, production and delivery. This file is the engineering view of the 12-week plan the client sees (`F:\DYECUTLAB-Work\12-Week-Plan\index.html`). The task log is `F:\DYECUTLAB-Work\TaskLogHTML\index.html`.
 
-Last updated: Mon, Oct 26, 2026 (end of week 4).
+Last updated: Sun, Nov 1, 2026 (end of week 5).
 
 ---
 
@@ -83,7 +83,7 @@ Weeks are 25 h each, 300 h in total. Percentages are the share of a task that is
 | 2 | Security and data foundation (including the three dashboards, moved up) | Done |
 | 3 | Project lifecycle and DICI chat fixes | In progress (about 96%) |
 | 4 | Customer workspace | In progress (about 72%) |
-| 5 | Quoting engine | Not started |
+| 5 | Quoting engine | Done (tried on sample prices; real prices wait for the client's table) |
 | 6 | Factory portal and admin | Not started |
 | 7 | Bilingual layer (English and Chinese) | Not started |
 | 8 | Payments | Not started |
@@ -92,7 +92,7 @@ Weeks are 25 h each, 300 h in total. Percentages are the share of a task that is
 | 11 | Private beta launch | Not started |
 | 12 | Observe, improve and plan next | Not started |
 
-Overall about 33% of the plan.
+Overall about 41% of the plan.
 
 ### Week 3 detail
 
@@ -110,7 +110,7 @@ Overall about 33% of the plan.
 Project page with a live progress tracker, files and messages (done: stage dates from the Activity history, a files grid with thumbnails and downloads, the latest chat message on the project and on each dashboard card); DICI app restyled to the lime and black brand (done, including the account emails sent from DYE CUT LAB through Brevo); email updates when a project changes stage (done); version-controlled database setup (done: every change is a migration file with a rolled-back check); hand-test the stage history and the factory's status button (done); archive the test projects (done Oct 24: 58 hidden with the client's OK, nothing deleted); a final live run on the live site as a brand-new customer before the early beta (done Oct 25: passed). Week 4 is complete (25 h, invoice INV-2026-004); the early intake beta opens Oct 26.
 
 ### Weeks 5–12 (summary)
-- **5 Quoting engine:** estimate from style, size, quantity, finish, tooling, freight and margin; always labeled as an estimate; quote versions per project; editable pricing tables; quote PDF.
+- **5 Quoting engine (done):** estimate from the project's quantity, finishes and tooling (shipping is added last, outside the instant estimate, with our margin); always labeled as an estimate; numbered quote versions per project that the team shows to the customer; a Pricing screen for the team; a one-page estimate PDF. The customer estimate card is behind `ESTIMATES_IN_APP` (off) until the client's real prices are entered.
 - **6 Factory portal and admin:** factory submits its quote, DCL approves before the customer sees it; record what the factory changed and why; test with the partner factory.
 - **7 Bilingual layer:** messages translated both ways keeping specifications exact, original always viewable, factory portal in Chinese, corrections logged.
 - **8 Payments:** secure checkout on an approved quote, automatic move to Proof once paid, receipts, test mode first.
