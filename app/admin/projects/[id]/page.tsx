@@ -84,7 +84,7 @@ export default async function ProjectDetail({
             </form>
           </Panel>
 
-          <EstimatePanel project={{ id: project.id, quantity: project.quantity, product_type: project.product_type }} params={query} supabase={supabase} />
+          <EstimatePanel project={{ id: project.id, project_number: project.project_number, quantity: project.quantity, product_type: project.product_type }} params={query} supabase={supabase} />
         </div>
 
         <div className="grid gap-6">

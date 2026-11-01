@@ -6,7 +6,7 @@ import { percentText, usd } from "../../../../lib/pricingAdmin";
 import { BTN, BTN_GHOST, Empty, FIELD, LABEL, Panel, Pill, formatDate, param, type SearchParams } from "../../ui";
 import { saveEstimateVersion, setEstimateShown } from "./estimateActions";
 
-type Project = { id: string; quantity: number | null; product_type: string | null };
+type Project = { id: string; project_number: string; quantity: number | null; product_type: string | null };
 
 function many(params: SearchParams, key: string): string[] {
   const value = params[key];
@@ -197,6 +197,12 @@ export default async function EstimatePanel({ project, params, supabase }: { pro
                 </div>
                 <div className="flex items-center gap-2">
                   <Pill>{version.shown_to_customer ? "Shown to customer" : "Hidden from customer"}</Pill>
+                  <a
+                    href={`/api/projects/${encodeURIComponent(project.project_number)}/estimate/pdf?version=${version.version}`}
+                    className={BTN_GHOST}
+                  >
+                    PDF
+                  </a>
                   <form action={setEstimateShown}>
                     <input type="hidden" name="project_id" value={project.id} />
                     <input type="hidden" name="version_id" value={version.id} />

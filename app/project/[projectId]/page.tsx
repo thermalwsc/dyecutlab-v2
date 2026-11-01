@@ -1331,6 +1331,13 @@ export default function ProjectPage() {
                   <div className="estimate-notice">
                     {estimateText.notice} · {estimateText.version}
                   </div>
+
+                  <a
+                    className="estimate-download"
+                    href={`/api/projects/${encodeURIComponent(projectId)}/estimate/pdf?version=${estimate?.version ?? 1}`}
+                  >
+                    DOWNLOAD PDF
+                  </a>
                 </div>
               ) : (
                 <p className="estimate-empty">
@@ -2757,6 +2764,19 @@ const styles = `
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.04em;
+  }
+
+  .estimate-download {
+    margin-top: 14px;
+    padding: 10px 16px;
+    display: inline-block;
+    border-radius: 999px;
+    background: #0a0a0a;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-decoration: none;
   }
 
   .estimate-empty {
