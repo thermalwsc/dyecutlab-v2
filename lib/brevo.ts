@@ -23,6 +23,7 @@ import { type NewProjectAlert, buildProjectAlertEmail } from "./projectAlert";
 import { buildStageEmail } from "./stageEmail";
 import { renderEmail } from "./emailLayout";
 import { CONTACT } from "./contact";
+import { type FactoryQuoteAlertInput, buildFactoryQuoteAlert } from "./factoryQuoteAlert";
 
 const BREVO_API_BASE = "https://api.brevo.com/v3";
 const BREVO_TIMEOUT_MS = 8000;
@@ -500,6 +501,46 @@ export async function sendStaffFactoryUpdateEmail(input: {
     return { status: "sent" };
   } catch (error) {
     console.error("BREVO FACTORY UPDATE EMAIL ERROR:", error);
+    return { status: "failed", detail: errorMessage(error) };
+  }
+}
+
+/* Team alert when a FACTORY sends a quote. The words come from
+   lib/factoryQuoteAlert.ts; nothing here blocks or undoes the quote if it fails. */
+export async function sendStaffFactoryQuoteEmail(input: FactoryQuoteAlertInput & { projectUrl: string }): Promise<ChannelResult> {
+  const { apiKey, senderEmail, senderName } = getEmailConfig();
+  const { email: staffEmail } = getStaffDestinations();
+
+  if (!apiKey) {
+    return { status: "skipped", detail: "BREVO_API_KEY is not configured." };
+  }
+
+  if (!senderEmail) {
+    return { status: "skipped", detail: "BREVO_SENDER_EMAIL is not configured." };
+  }
+
+  const alert = buildFactoryQuoteAlert(input);
+  const { html, text } = renderEmail({
+    eyebrow: `Hi ${CONTACT.personName} — factory quote`,
+    headline: alert.headline,
+    rows: alert.rows,
+    cta: { label: "Review it in the team workspace", url: input.projectUrl },
+    footer: alert.footer,
+  });
+
+  try {
+    await brevoPost("/smtp/email", apiKey, {
+      sender: { name: senderName, email: senderEmail },
+      to: [{ email: staffEmail }],
+      subject: alert.headline,
+      htmlContent: html,
+      textContent: text,
+      tags: ["factory_quote_staff"],
+    });
+
+    return { status: "sent" };
+  } catch (error) {
+    console.error("BREVO FACTORY QUOTE EMAIL ERROR:", error);
     return { status: "failed", detail: errorMessage(error) };
   }
 }

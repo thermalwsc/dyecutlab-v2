@@ -100,10 +100,18 @@ export default async function FactoryProjectPage({
     .limit(20);
   if (quoteError) console.error("FACTORY QUOTES:", quoteError.message);
   const quotes = quoteData ?? [];
+  const { data: noteData, error: noteError } = await supabase
+    .from("factory_change_notes")
+    .select("id, kind, what_changed, reason, created_at")
+    .eq("project_id", project.id)
+    .order("created_at", { ascending: false })
+    .limit(30);
+  if (noteError) console.error("FACTORY CHANGE NOTES:", noteError.message);
+  const notes = noteData ?? [];
   const hasApproved = quotes.some((q) => q.status === "approved");
   const canQuote = canQuoteInStatus(project.status) && !hasApproved;
   const why = param(query, "why").slice(0, 240);
-  const quoteMessages = { ...FACTORY_MESSAGES, ...(why ? { quote_invalid: why } : {}) };
+  const quoteMessages = { ...FACTORY_MESSAGES, ...(why ? { quote_invalid: why, change_invalid: why } : {}) };
   const usd = (value: unknown) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(Number(value));
 
   const next = factoryNextFor(project.status);
@@ -205,6 +213,81 @@ export default async function FactoryProjectPage({
           )}
         </section>
       )}
+
+      <section aria-labelledby="change-heading" className="mt-6 rounded-[28px] bg-[var(--dcl-lime-soft)] p-5 sm:p-7">
+        <h2 id="change-heading" className="text-[22px] font-black tracking-[-0.04em]">
+          Changes you made
+        </h2>
+        <p className="mt-1 text-[14px] text-zinc-700">
+          Changed the artwork, the material, the price or the timing? Tell DYE CUT LAB what changed and why. It helps us learn and quote faster next time.
+        </p>
+
+        <form action={recordFactoryChange} className="mt-4 grid gap-4">
+          <input type="hidden" name="project_number" value={project.project_number} />
+          <label className="block text-[12px] font-bold uppercase tracking-[0.1em] text-zinc-600">
+            What kind of change
+            <select
+              name="kind"
+              required
+              defaultValue=""
+              className="mt-1.5 h-12 w-full rounded-xl border-2 border-zinc-300 bg-white px-3 text-[15px] font-semibold text-zinc-900 outline-none transition focus:border-black"
+            >
+              <option value="" disabled>
+                Choose…
+              </option>
+              {CHANGE_KINDS.map((kind) => (
+                <option key={kind} value={kind}>
+                  {CHANGE_KIND_LABELS[kind]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-[12px] font-bold uppercase tracking-[0.1em] text-zinc-600">
+            What changed
+            <textarea
+              name="what_changed"
+              required
+              rows={2}
+              maxLength={1000}
+              placeholder="For example: changed from 350 gsm to 400 gsm board"
+              className="mt-1.5 w-full rounded-xl border-2 border-zinc-300 bg-white px-3 py-2.5 text-[15px] font-medium leading-relaxed text-zinc-900 outline-none transition focus:border-black"
+            />
+          </label>
+          <label className="block text-[12px] font-bold uppercase tracking-[0.1em] text-zinc-600">
+            Why
+            <textarea
+              name="reason"
+              required
+              rows={2}
+              maxLength={1000}
+              placeholder="For example: the 350 gsm board is out of stock"
+              className="mt-1.5 w-full rounded-xl border-2 border-zinc-300 bg-white px-3 py-2.5 text-[15px] font-medium leading-relaxed text-zinc-900 outline-none transition focus:border-black"
+            />
+          </label>
+          <button
+            type="submit"
+            className="group flex min-h-[52px] w-full items-center justify-between rounded-full border-[3px] border-black bg-white px-5 text-[15px] font-extrabold transition hover:bg-black hover:text-white active:scale-[0.98] sm:w-auto sm:min-w-[280px]"
+          >
+            Record this change
+            <ArrowIcon className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+          </button>
+          <p className="text-[12px] text-zinc-600">A note cannot be edited or deleted once it is recorded.</p>
+        </form>
+
+        {notes.length > 0 && (
+          <ul className="mt-6 grid gap-3">
+            {notes.map((note) => (
+              <li key={note.id} className="rounded-2xl bg-white p-4">
+                <p className="text-[13px] font-extrabold uppercase tracking-[0.08em] text-zinc-500">
+                  {changeKindLabel(note.kind)} · {formatDate(note.created_at)}
+                </p>
+                <p className="mt-1 text-[15px] font-bold leading-snug">{note.what_changed}</p>
+                <p className="mt-1 text-[14px] leading-snug text-zinc-700">Why: {note.reason}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.2fr_1fr] lg:items-start">
         <section aria-labelledby="brief-heading" className="rounded-[28px] border-2 border-black bg-white p-5 sm:p-7">

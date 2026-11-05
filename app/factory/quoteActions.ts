@@ -43,7 +43,7 @@ export async function sendFactoryQuote(formData: FormData) {
   const supabase = await getServerSupabase();
   const { data: project } = await supabase
     .from("projects")
-    .select("id, status")
+    .select("id, status, title")
     .eq("project_number", number)
     .eq("factory_id", profile.factory_id)
     .maybeSingle();
@@ -67,18 +67,39 @@ export async function sendFactoryQuote(formData: FormData) {
 
   /* Only the columns a sender may choose. Version, factory, status and sender are
      set by the database. */
-  const { error } = await supabase.from("factory_quotes").insert({
-    project_id: project.id,
-    quantity: parsed.value.quantity,
-    price_per_piece: parsed.value.price_per_piece,
-    tooling_cost: parsed.value.tooling_cost,
-    lead_days: parsed.value.lead_days,
-    notes: parsed.value.notes,
-  });
+  const { data: saved, error } = await supabase
+    .from("factory_quotes")
+    .insert({
+      project_id: project.id,
+      quantity: parsed.value.quantity,
+      price_per_piece: parsed.value.price_per_piece,
+      tooling_cost: parsed.value.tooling_cost,
+      lead_days: parsed.value.lead_days,
+      notes: parsed.value.notes,
+    })
+    .select("version, total")
+    .single();
   if (error) {
     console.error("FACTORY QUOTE ERROR:", error.code, error.message);
     back(path, { error: "quote_invalid", why: quoteDatabaseMessage(error) });
   }
+
+  /* Tell the team (best effort: a failed email never undoes the quote). The name is
+     read with the factory's own session; if that fails it simply says "A factory". */
+  const { data: factory } = await supabase.from("factories").select("name").eq("id", profile.factory_id).maybeSingle();
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://dyecutlab.com").replace(/\/$/, "");
+  const alert = await sendStaffFactoryQuoteEmail({
+    projectNumber: number,
+    projectTitle: project.title?.trim() || "Untitled project",
+    factoryName: factory?.name ?? "A factory",
+    version: Number(saved?.version ?? 1),
+    quantity: parsed.value.quantity,
+    pricePerPiece: parsed.value.price_per_piece,
+    total: Number(saved?.total ?? 0),
+    leadDays: parsed.value.lead_days,
+    projectUrl: `${siteUrl}/admin/projects/${project.id}`,
+  });
+  if (alert.status !== "sent") console.error("FACTORY QUOTE STAFF NOT NOTIFIED:", { number, alert });
 
   back(path, { ok: "quote_sent" });
 }
