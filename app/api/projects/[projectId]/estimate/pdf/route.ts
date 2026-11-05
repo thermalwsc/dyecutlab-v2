@@ -4,7 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { forbidden, getRouteSupabase, unauthorized } from "../../../../../../lib/supabase/route";
 import { createRateLimiter } from "../../../../../../lib/rateLimit";
 import { ESTIMATES_IN_APP } from "../../../../../../lib/siteFlags";
-import { toCustomerVersion } from "../../../../../../lib/quoteVersions";
+import { withKindFallback } from "../../../../../../lib/quoteKindFallback";
+import { toCustomerVersion, type QuoteVersionRow } from "../../../../../../lib/quoteVersions";
 import { buildEstimateDocument, renderEstimatePdf } from "../../../../../../lib/quotePdf";
 
 /*
@@ -77,20 +78,21 @@ export async function GET(
     }
     if (!project) return NOT_FOUND();
 
-    let query = supabase
-      .from("quote_versions")
-      .select("version, created_at, quantity, sell_total, sell_per_piece, lead_days, includes, excludes, notice")
-      .eq("project_id", project.id);
-    if (!isTeam) query = query.eq("shown_to_customer", true);
-    if (versionNumber !== null) query = query.eq("version", versionNumber);
-
-    const { data: rows, error } = await query.order("version", { ascending: false }).limit(1);
+    const { data: rows, error } = await withKindFallback((includeKind) => {
+      let query = supabase
+        .from("quote_versions")
+        .select(`version, ${includeKind ? "kind, " : ""}created_at, quantity, sell_total, sell_per_piece, lead_days, includes, excludes, notice`)
+        .eq("project_id", project.id);
+      if (!isTeam) query = query.eq("shown_to_customer", true);
+      if (versionNumber !== null) query = query.eq("version", versionNumber);
+      return query.order("version", { ascending: false }).limit(1);
+    });
     if (error) {
       console.error("ESTIMATE PDF LOAD ERROR:", error);
       return NextResponse.json({ error: "The estimate could not be prepared." }, { status: 500 });
     }
 
-    const version = toCustomerVersion(rows?.[0]);
+    const version = toCustomerVersion((rows as unknown as QuoteVersionRow[] | null)?.[0]);
     if (!version) return NOT_FOUND();
 
     let preparedFor: string | null = null;

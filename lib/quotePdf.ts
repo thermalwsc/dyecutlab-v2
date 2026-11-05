@@ -26,6 +26,7 @@ export type EstimateDocumentInput = {
 
 export type EstimateDocument = {
   title: string;
+  tag: string;
   heading: string;
   projectLine: string;
   preparedFor: string | null;
@@ -49,26 +50,28 @@ function dateText(iso: string): string {
 }
 
 /* A file name that is safe in a download header: letters, digits and dashes. */
-export function estimateFileName(projectNumber: string, version: number): string {
+export function estimateFileName(projectNumber: string, version: number, kind: "estimate" | "verified" = "estimate"): string {
   const project = projectNumber.replace(/[^A-Za-z0-9-]/g, "").slice(0, 40) || "project";
-  return `DYE-CUT-LAB-Estimate-${project}-v${Math.max(1, Math.trunc(version))}.pdf`;
+  return `DYE-CUT-LAB-${kind === "verified" ? "Quote" : "Estimate"}-${project}-v${Math.max(1, Math.trunc(version))}.pdf`;
 }
 
 export function buildEstimateDocument(input: EstimateDocumentInput): EstimateDocument {
   const card = describeCustomerVersion(input.version);
   const title = (input.projectTitle || "").trim();
 
+  const verified = input.version.kind === "verified";
   const rows: { label: string; value: string }[] = [];
   if (card.included) {
     const included = card.included.replace(/^Includes\s+/, "").replace(/\.$/, "");
     rows.push({ label: "Includes", value: `${included.charAt(0).toUpperCase()}${included.slice(1)}` });
   }
   if (card.lead) rows.push({ label: "Lead time", value: card.lead });
-  if (card.notIncluded) rows.push({ label: "Shipping", value: "Added after the estimate" });
+  if (card.notIncluded) rows.push({ label: "Shipping", value: verified ? "Added after the quote" : "Added after the estimate" });
   rows.push({ label: "Currency", value: "US dollars" });
 
   return {
-    title: `Estimate, ${card.version.toLowerCase()}`,
+    title: `${verified ? "Quote" : "Estimate"}, ${card.version.toLowerCase()}`,
+    tag: verified ? "QUOTE" : "ESTIMATE",
     heading: card.heading,
     projectLine: title ? `${input.projectNumber} · ${title}` : input.projectNumber,
     preparedFor: input.preparedFor && input.preparedFor.trim() ? input.preparedFor.trim() : null,
@@ -79,17 +82,23 @@ export function buildEstimateDocument(input: EstimateDocumentInput): EstimateDoc
     quantity: card.quantity,
     rows,
     stepsTitle: "What happens next",
-    steps: [
-      `Reply to us by text or email to go ahead.`,
-      "We check the price and timing with a factory.",
-      "Once a factory confirms it, you get the final quote.",
-    ],
+    steps: verified
+      ? [
+          "Reply to us by text or email to approve this quote.",
+          "We send you the payment details.",
+          "After payment we prepare your proof for you to approve.",
+        ]
+      : [
+          "Reply to us by text or email to go ahead.",
+          "We check the price and timing with a factory.",
+          "Once a factory confirms it, you get the final quote.",
+        ],
     notice: card.notice,
     footer: [
       `Questions? Text ${CONTACT.phoneDisplay} or email ${CONTACT.email}.`,
-      "This estimate is not an invoice and is not a final quote.",
+      verified ? "This quote is not an invoice. Shipping is added after the quote." : "This estimate is not an invoice and is not a final quote.",
     ],
-    fileName: estimateFileName(input.projectNumber, input.version.version),
+    fileName: estimateFileName(input.projectNumber, input.version.version, input.version.kind),
   };
 }
 
@@ -169,7 +178,7 @@ export async function renderEstimatePdf(document: EstimateDocument, logo?: Uint8
     page.drawText("DYE CUT LAB", { x: MARGIN, y: PAGE_H - 56, size: 24, font: bold, color: BLACK });
   }
 
-  const tag = "ESTIMATE";
+  const tag = document.tag;
   const tagW = bold.widthOfTextAtSize(tag, 11);
   page.drawText(tag, { x: PAGE_W - MARGIN - tagW, y: PAGE_H - 44, size: 11, font: bold, color: BLACK });
   const meta = safeText(regular, [document.versionLabel, document.dateLine].filter(Boolean).join(" · "));
@@ -196,7 +205,7 @@ export async function renderEstimatePdf(document: EstimateDocument, logo?: Uint8
   page.drawRectangle({ x: MARGIN, y: y - cardH, width, height: cardH, color: BLACK });
   page.drawRectangle({ x: MARGIN, y: y - cardH, width: 8, height: cardH, color: LIME });
 
-  page.drawText("ESTIMATED TOTAL", { x: MARGIN + 28, y: y - 30, size: 9, font: bold, color: LIME });
+  page.drawText(document.tag === "QUOTE" ? "TOTAL" : "ESTIMATED TOTAL", { x: MARGIN + 28, y: y - 30, size: 9, font: bold, color: LIME });
   page.drawText(safeText(bold, document.total), { x: MARGIN + 28, y: y - 74, size: 40, font: bold, color: WHITE });
 
   const rightX = MARGIN + width * 0.62;
@@ -207,7 +216,7 @@ export async function renderEstimatePdf(document: EstimateDocument, logo?: Uint8
   y -= cardH + 34;
 
   /* ---------- what it covers ---------- */
-  page.drawText("WHAT THIS ESTIMATE COVERS", { x: MARGIN, y, size: 9, font: bold, color: GREY });
+  page.drawText(safeText(bold, `WHAT THIS ${document.tag} COVERS`), { x: MARGIN, y, size: 9, font: bold, color: GREY });
   y -= 10;
   const labelW = 96;
   for (const row of document.rows) {

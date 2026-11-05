@@ -11,6 +11,8 @@ import { projectStatusLabel } from "../../statuses";
 import { AdminTabs, BTN, BTN_DANGER, BTN_GHOST, Banner, FIELD, LABEL, Panel, Pill, formatDate, param, type SearchParams } from "../../ui";
 import ProjectFields from "../ProjectForm";
 import EstimatePanel from "./EstimatePanel";
+import ChangeNotesPanel from "./ChangeNotesPanel";
+import FactoryQuotePanel from "./FactoryQuotePanel";
 
 export const metadata: Metadata = { title: "Project — DYE CUT LAB", robots: { index: false } };
 
@@ -47,7 +49,14 @@ export default async function ProjectDetail({
   const why = param(query, "why").slice(0, 240);
   const bannerCopy = {
     ...ADMIN_MESSAGES,
-    ...(why ? { estimate_failed: why } : {}),
+    ...(why ? { estimate_failed: why, factory_quote_failed: why } : {}),
+    ...(param(query, "ok") === "factory_quote_approved"
+      ? {
+          factory_quote_approved: `Quote approved. ${
+            param(query, "version") ? `The verified quote is saved as version ${param(query, "version")}` : "The verified quote is saved"
+          }, hidden from the customer until you show it.${param(query, "moved") === "1" ? " The project moved to Approved." : ""}`,
+        }
+      : {}),
     ...(param(query, "ok") === "estimate_saved" ? { estimate_saved: `Estimate saved as version ${param(query, "version") || ""}.`.replace(" .", ".") } : {}),
   };
   const confirming = param(query, "confirm") === "delete";
@@ -83,6 +92,10 @@ export default async function ProjectDetail({
               </button>
             </form>
           </Panel>
+
+          <FactoryQuotePanel project={{ id: project.id, product_type: project.product_type }} supabase={supabase} />
+
+          <ChangeNotesPanel projectId={project.id} supabase={supabase} />
 
           <EstimatePanel project={{ id: project.id, project_number: project.project_number, quantity: project.quantity, product_type: project.product_type }} params={query} supabase={supabase} />
         </div>

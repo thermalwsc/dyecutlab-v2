@@ -131,3 +131,28 @@ test("the logo is drawn when given, and a broken logo falls back to the name ins
   const broken = await renderEstimatePdf(doc, new Uint8Array([1, 2, 3, 4]));
   assert.equal((await PDFDocument.load(broken)).getPageCount(), 1);
 });
+
+test("a verified quote says quote, not estimate, everywhere in its PDF", async () => {
+  const doc = buildEstimateDocument({ projectNumber: "DCL-00031", projectTitle: "Gift boxes", version: version({ kind: "verified", notice: null }) });
+
+  assert.equal(doc.title, "Quote, version 2");
+  assert.equal(doc.tag, "QUOTE");
+  assert.equal(doc.heading, "Your quote");
+  assert.equal(doc.rows.find((row) => row.label === "Shipping")?.value, "Added after the quote");
+  assert.match(doc.notice, /confirmed by a factory and approved by DYE CUT LAB/);
+  assert.match(doc.steps[0], /approve this quote/);
+  assert.match(doc.footer.join(" "), /This quote is not an invoice/);
+  assert.ok(!JSON.stringify(doc).toLowerCase().includes("estimate"), JSON.stringify(doc));
+
+  const bytes = await renderEstimatePdf(doc);
+  const loaded = await PDFDocument.load(bytes);
+  assert.equal(loaded.getPageCount(), 1);
+  assert.equal(loaded.getTitle(), "Quote, version 2");
+});
+
+test("an estimate keeps its own wording", () => {
+  const doc = buildEstimateDocument({ projectNumber: "DCL-00031", projectTitle: null, version: version() });
+  assert.equal(doc.tag, "ESTIMATE");
+  assert.equal(doc.heading, "Your estimate");
+  assert.ok(!JSON.stringify(doc).includes("approve this quote"));
+});

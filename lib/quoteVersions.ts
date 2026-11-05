@@ -21,7 +21,7 @@ export type SaveQuoteVersionArgs = {
   p_quantity: number;
   p_sell_total: number;
   p_sell_per_piece: number;
-  p_lead_days: number;
+  p_lead_days: number | null;
   p_includes: string[];
   p_excludes: string[];
   p_notice: string;
@@ -30,6 +30,9 @@ export type SaveQuoteVersionArgs = {
   p_cost: number;
   p_margin: number;
   p_margin_rule: string;
+  /* Left out for an estimate (the database then saves an estimate). */
+  p_kind?: "estimate" | "verified";
+  p_factory_quote?: string | null;
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -64,6 +67,7 @@ export function buildQuoteVersionArgs(projectId: string, input: EstimateInput, e
 /* One row of the customer-safe table, as the database returns it. */
 export type QuoteVersionRow = {
   version: number;
+  kind?: string | null;
   created_at: string;
   quantity: number;
   sell_total: number | string;
@@ -75,7 +79,8 @@ export type QuoteVersionRow = {
 };
 
 export type CustomerQuoteVersion = {
-  label: "Estimate";
+  label: "Estimate" | "Quote";
+  kind: "estimate" | "verified";
   version: number;
   createdAt: string;
   notice: string;
@@ -87,6 +92,9 @@ export type CustomerQuoteVersion = {
   includes: string[];
   excludes: string[];
 };
+
+/* The notice on a verified quote, and the one an old row without a notice falls back to. */
+export const VERIFIED_NOTICE = "This quote was confirmed by a factory and approved by DYE CUT LAB.";
 
 /* The database returns numeric columns as text; this reads them back as numbers
    and always carries the estimate notice, even if an old row lacks one. A row
@@ -100,11 +108,14 @@ export function toCustomerVersion(row: QuoteVersionRow | null | undefined): Cust
   if (!Number.isInteger(row.quantity) || row.quantity <= 0) return null;
   if (!Number.isInteger(row.version) || row.version <= 0) return null;
 
+  const verified = row.kind === "verified";
+
   return {
-    label: "Estimate",
+    label: verified ? "Quote" : "Estimate",
+    kind: verified ? "verified" : "estimate",
     version: row.version,
     createdAt: row.created_at,
-    notice: row.notice && row.notice.trim() ? row.notice : ESTIMATE_NOTICE,
+    notice: row.notice && row.notice.trim() ? row.notice : verified ? VERIFIED_NOTICE : ESTIMATE_NOTICE,
     quantity: row.quantity,
     total,
     perPiece,
@@ -160,14 +171,16 @@ export function describeCustomerVersion(view: CustomerQuoteVersion): EstimateCar
   const included = view.includes.map((key) => INCLUDED_WORDS[key]).filter(Boolean);
   const excluded = view.excludes.filter((key) => key === "freight");
 
+  const word = view.kind === "verified" ? "quote" : "estimate";
+
   return {
-    heading: "Your estimate",
+    heading: `Your ${word}`,
     total: money(view.total, 2),
     perPiece: `${money(view.perPiece, 2)} per piece`,
     quantity: `${view.quantity.toLocaleString("en-US")} pieces`,
     lead: view.leadDays && view.leadDays > 0 ? `About ${view.leadDays} days from approval` : null,
     included: included.length > 0 ? `Includes ${joinWords(included)}.` : "",
-    notIncluded: excluded.length > 0 ? "Shipping is added after the estimate." : null,
+    notIncluded: excluded.length > 0 ? `Shipping is added after the ${word}.` : null,
     notice: view.notice,
     version: `Version ${view.version}`,
   };

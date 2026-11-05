@@ -1297,7 +1297,7 @@ export default function ProjectPage() {
           {ESTIMATES_IN_APP && (
             <section className="section estimate-section">
               <div className="eyebrow">
-                YOUR ESTIMATE
+                {(estimateText?.heading ?? "Your estimate").toUpperCase()}
               </div>
 
               {estimateText ? (

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { forbidden, getRouteSupabase, unauthorized } from "../../../../../lib/supabase/route";
 import { ESTIMATES_IN_APP } from "../../../../../lib/siteFlags";
-import { latestCustomerVersion } from "../../../../../lib/quoteVersions";
+import { withKindFallback } from "../../../../../lib/quoteKindFallback";
+import { latestCustomerVersion, type QuoteVersionRow } from "../../../../../lib/quoteVersions";
 
 /*
 |--------------------------------------------------------------------------
@@ -51,20 +52,22 @@ export async function GET(
       return NextResponse.json({ error: `Project ${projectId} was not found.` }, { status: 404 });
     }
 
-    const { data: rows, error } = await supabase
-      .from("quote_versions")
-      .select("version, created_at, quantity, sell_total, sell_per_piece, lead_days, includes, excludes, notice")
-      .eq("project_id", project.id)
-      .eq("shown_to_customer", true)
-      .order("version", { ascending: false })
-      .limit(10);
+    const { data: rows, error } = await withKindFallback((includeKind) =>
+      supabase
+        .from("quote_versions")
+        .select(`version, ${includeKind ? "kind, " : ""}created_at, quantity, sell_total, sell_per_piece, lead_days, includes, excludes, notice`)
+        .eq("project_id", project.id)
+        .eq("shown_to_customer", true)
+        .order("version", { ascending: false })
+        .limit(10)
+    );
 
     if (error) {
       console.error("ESTIMATE LOAD ERROR:", error);
       return NextResponse.json({ error: "The estimate could not be loaded." }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, enabled: true, estimate: latestCustomerVersion(rows) });
+    return NextResponse.json({ success: true, enabled: true, estimate: latestCustomerVersion(rows as unknown as QuoteVersionRow[] | null) });
   } catch (error) {
     console.error("PROJECT ESTIMATE ROUTE ERROR:", error);
     return NextResponse.json({ error: "The estimate could not be loaded." }, { status: 500 });

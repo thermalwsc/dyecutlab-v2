@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { computeProjectEstimate, loadEstimateRows } from "../../../../lib/estimateServer";
 import { finishesFor, matchProducts } from "../../../../lib/estimateProject";
+import { withKindFallback } from "../../../../lib/quoteKindFallback";
 import { percentText, usd } from "../../../../lib/pricingAdmin";
 import { BTN, BTN_GHOST, Empty, FIELD, LABEL, Panel, Pill, formatDate, param, type SearchParams } from "../../ui";
 import { saveEstimateVersion, setEstimateShown } from "./estimateActions";
@@ -33,12 +34,23 @@ export default async function EstimatePanel({ project, params, supabase }: { pro
   const rows = await loadEstimateRows(supabase);
   const fitting = matchProducts(project.product_type, rows.products);
 
-  const { data: versionRows } = await supabase
-    .from("quote_versions")
-    .select("id, version, created_at, quantity, sell_total, sell_per_piece, shown_to_customer")
-    .eq("project_id", project.id)
-    .order("version", { ascending: false });
-  const versions = versionRows ?? [];
+  const { data: versionRows } = await withKindFallback((includeKind) =>
+    supabase
+      .from("quote_versions")
+      .select(`id, version, ${includeKind ? "kind, " : ""}created_at, quantity, sell_total, sell_per_piece, shown_to_customer`)
+      .eq("project_id", project.id)
+      .order("version", { ascending: false })
+  );
+  const versions = ((versionRows ?? []) as unknown as {
+    id: string;
+    version: number;
+    kind?: string | null;
+    created_at: string;
+    quantity: number;
+    sell_total: number | string;
+    sell_per_piece: number | string;
+    shown_to_customer: boolean;
+  }[]);
 
   const requested = param(params, "product");
   const product = fitting.find((row) => row.id === requested) ?? fitting[0] ?? null;
@@ -189,7 +201,7 @@ export default async function EstimatePanel({ project, params, supabase }: { pro
               <li key={version.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                 <div className="min-w-0 text-[14px]">
                   <p className="font-bold">
-                    Version {version.version} · {usd(version.sell_total)}
+                    {version.kind === "verified" ? "Verified quote" : "Estimate"}, version {version.version} · {usd(version.sell_total)}
                   </p>
                   <p className="text-[13px] text-zinc-600">
                     {Number(version.quantity).toLocaleString("en-US")} pcs · {usd(version.sell_per_piece)} per piece · saved {formatDate(version.created_at)}
