@@ -144,6 +144,10 @@ export function factoryMoveFor(status: string | null | undefined) {
 export const FACTORY_MESSAGES: Record<string, string> = {
   moved_qc: "Moved to quality check. DYE CUT LAB and the customer can see the update.",
   moved_shipping: "Marked as shipped. DYE CUT LAB and the customer can see the update.",
+  quote_sent: "Quote sent. DYE CUT LAB will review it before anything goes to the customer.",
+  quote_closed: "This project is no longer open for quotes.",
+  quote_approved: "This project already has an approved quote.",
+  quote_invalid: "That quote could not be sent. Check the values and try again.",
   stale: "This project's status changed in the meantime. Check it below and try again.",
   save_failed: "That didn't save. Please try again.",
   not_found: "We couldn't find that project.",

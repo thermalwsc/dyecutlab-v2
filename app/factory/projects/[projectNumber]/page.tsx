@@ -5,12 +5,16 @@ import { ROLE_LABELS } from "../../../../lib/auth/roles";
 import { requireRole } from "../../../../lib/auth/guard";
 import { getServerSupabase } from "../../../../lib/supabase/server";
 import { BRIEF_FIELDS, FACTORY_MESSAGES, FILE_CATEGORY_LABELS, factoryMoveFor, factoryNextFor } from "../../../../lib/factoryWork";
+import { canQuoteInStatus, factoryQuoteStatusLabel, isFactoryQuoteStatus } from "../../../../lib/factoryQuote";
+import { CHANGE_KINDS, CHANGE_KIND_LABELS, changeKindLabel } from "../../../../lib/factoryChange";
 import { projectStatusLabel } from "../../../admin/statuses";
-import { Banner, type SearchParams } from "../../../admin/ui";
+import { Banner, param, type SearchParams } from "../../../admin/ui";
 import { moveFactoryProject } from "../../actions";
+import { recordFactoryChange } from "../../changeActions";
 import { ArrowIcon } from "../../../updates/Icons";
 import { RoleShell } from "../../../updates/RoleShell";
 import { formatDate } from "../../FactoryProjectCard";
+import QuoteForm from "./QuoteForm";
 
 export const metadata: Metadata = { title: "Project brief — DYE CUT LAB", robots: { index: false } };
 
@@ -86,6 +90,22 @@ export default async function FactoryProjectPage({
     })
   );
 
+  /* The quotes this factory has already sent for the project (Row Level Security
+     returns only its own factory's rows). */
+  const { data: quoteData, error: quoteError } = await supabase
+    .from("factory_quotes")
+    .select("id, version, status, quantity, price_per_piece, tooling_cost, total, lead_days, notes, team_note, created_at")
+    .eq("project_id", project.id)
+    .order("version", { ascending: false })
+    .limit(20);
+  if (quoteError) console.error("FACTORY QUOTES:", quoteError.message);
+  const quotes = quoteData ?? [];
+  const hasApproved = quotes.some((q) => q.status === "approved");
+  const canQuote = canQuoteInStatus(project.status) && !hasApproved;
+  const why = param(query, "why").slice(0, 240);
+  const quoteMessages = { ...FACTORY_MESSAGES, ...(why ? { quote_invalid: why } : {}) };
+  const usd = (value: unknown) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(Number(value));
+
   const next = factoryNextFor(project.status);
   const move = factoryMoveFor(project.status);
   const record = project as unknown as Record<string, unknown>;
@@ -106,7 +126,7 @@ export default async function FactoryProjectPage({
         </Link>
       </p>
 
-      <Banner params={query} copy={FACTORY_MESSAGES} />
+      <Banner params={query} copy={quoteMessages} />
 
       <div
         className={`mt-4 rounded-[24px] border-2 p-4 sm:p-5 ${
@@ -137,6 +157,54 @@ export default async function FactoryProjectPage({
           </form>
         )}
       </div>
+
+      {(canQuote || quotes.length > 0) && (
+        <section aria-labelledby="quote-heading" className="mt-6 rounded-[28px] border-2 border-black bg-white p-5 sm:p-7">
+          <h2 id="quote-heading" className="text-[22px] font-black tracking-[-0.04em]">
+            Your quote
+          </h2>
+
+          {canQuote ? (
+            <>
+              <p className="mt-1 text-[14px] text-zinc-700">Send your price for this project. All amounts in US dollars.</p>
+              <QuoteForm projectNumber={project.project_number} defaultQuantity={project.quantity} />
+            </>
+          ) : (
+            <p className="mt-1 text-[14px] text-zinc-700">
+              {hasApproved ? "Your quote was approved. Thank you." : "This project is no longer open for new quotes."}
+            </p>
+          )}
+
+          {quotes.length > 0 && (
+            <div className="mt-6 border-t-2 border-dashed border-black/10 pt-5">
+              <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-zinc-500">Quotes you sent</p>
+              <ul className="mt-3 grid gap-3">
+                {quotes.map((quote) => {
+                  const status = isFactoryQuoteStatus(quote.status) ? factoryQuoteStatusLabel(quote.status, "factory") : String(quote.status);
+                  return (
+                    <li key={quote.id} className="rounded-2xl bg-zinc-50 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-[15px] font-extrabold">
+                          Version {quote.version} · {usd(quote.total)}
+                        </p>
+                        <span className="rounded-full border-2 border-black bg-white px-3 py-1 text-[12px] font-extrabold">{status}</span>
+                      </div>
+                      <p className="mt-1 text-[13px] text-zinc-600">
+                        {Number(quote.quantity).toLocaleString("en-US")} pcs × {usd(quote.price_per_piece)}
+                        {Number(quote.tooling_cost) > 0 ? ` + ${usd(quote.tooling_cost)} tooling` : ""}
+                        {typeof quote.lead_days === "number" ? ` · ${quote.lead_days} days` : ""} · sent {formatDate(quote.created_at)}
+                      </p>
+                      {quote.status === "rejected" && quote.team_note && (
+                        <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-[13px] font-semibold text-red-800">Reason from DYE CUT LAB: {quote.team_note}</p>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.2fr_1fr] lg:items-start">
         <section aria-labelledby="brief-heading" className="rounded-[28px] border-2 border-black bg-white p-5 sm:p-7">

@@ -97,3 +97,75 @@ test("the wording is plain, differs for the factory and the team, and has no raw
   assert.equal(factoryQuoteStatusLabel("rejected", "factory"), "Not accepted");
   assert.equal(factoryQuoteStatusLabel("rejected", "team"), "Rejected");
 });
+
+import { QUOTE_OPEN_STATUSES, canQuoteInStatus, parseFactoryQuote, quoteDatabaseMessage } from "../lib/factoryQuote.ts";
+
+function parse(values: Record<string, string>) {
+  return parseFactoryQuote((name) => values[name]);
+}
+
+test("a factory can quote while a project is being priced, and not after it has moved on", () => {
+  assert.deepEqual([...QUOTE_OPEN_STATUSES], ["development", "quote_ready", "factory_review"]);
+  for (const status of ["development", "quote_ready", "factory_review", " Factory_Review "]) assert.equal(canQuoteInStatus(status), true, status);
+  for (const status of ["lead", "approved", "payment", "proof", "production", "qc", "shipping", "delivered", "", null, undefined]) {
+    assert.equal(canQuoteInStatus(status), false, String(status));
+  }
+});
+
+test("a good quote form becomes the numbers the database wants", () => {
+  const result = parse({ quantity: "1,000", price_per_piece: "$1.1", tooling_cost: "120.5", lead_days: "30", notes: "  Includes matte lamination  " });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.ok && result.value, { quantity: 1000, price_per_piece: 1.1, tooling_cost: 120.5, lead_days: 30, notes: "Includes matte lamination" });
+});
+
+test("tooling, lead time and notes are optional", () => {
+  const result = parse({ quantity: "500", price_per_piece: "2" });
+  assert.deepEqual(result.ok && result.value, { quantity: 500, price_per_piece: 2, tooling_cost: 0, lead_days: null, notes: null });
+});
+
+test("amounts are rounded to the database decimals", () => {
+  const result = parse({ quantity: "10", price_per_piece: "1.23456", tooling_cost: "10.999" });
+  assert.equal(result.ok && result.value.price_per_piece, 1.2346);
+  assert.equal(result.ok && result.value.tooling_cost, 11);
+});
+
+test("the quantity must be a whole number of at least one", () => {
+  for (const quantity of ["", "0", "-5", "1.5", "abc", "1e3", "99999999"]) {
+    const result = parse({ quantity, price_per_piece: "1" });
+    assert.equal(result.ok, false, quantity);
+    assert.match(!result.ok ? result.message : "", /quantity/i, quantity);
+  }
+});
+
+test("the price per piece must be a positive number", () => {
+  for (const price of ["", "abc", "-1", "0", "0.00", "1e3", "5000000"]) {
+    const result = parse({ quantity: "100", price_per_piece: price });
+    assert.equal(result.ok, false, price);
+    assert.match(!result.ok ? result.message : "", /price/i, price);
+  }
+});
+
+test("a broken tooling cost, lead time or note is refused, and an empty one is fine", () => {
+  assert.equal(parse({ quantity: "100", price_per_piece: "1", tooling_cost: "abc" }).ok, false);
+  assert.equal(parse({ quantity: "100", price_per_piece: "1", tooling_cost: "-5" }).ok, false);
+  assert.equal(parse({ quantity: "100", price_per_piece: "1", lead_days: "2.5" }).ok, false);
+  assert.equal(parse({ quantity: "100", price_per_piece: "1", lead_days: "-3" }).ok, false);
+  assert.equal(parse({ quantity: "100", price_per_piece: "1", lead_days: "5000" }).ok, false);
+  assert.equal(parse({ quantity: "100", price_per_piece: "1", notes: "x".repeat(2001) }).ok, false);
+  assert.equal(parse({ quantity: "100", price_per_piece: "1", lead_days: "0" }).ok, true, "zero days is allowed");
+});
+
+test("the form cannot carry a status, a factory, a version or a total", () => {
+  const result = parse({ quantity: "100", price_per_piece: "1", status: "approved", factory_id: "x", version: "9", total: "1" });
+  assert.equal(result.ok, true);
+  assert.deepEqual(Object.keys(result.ok ? result.value : {}).sort(), ["lead_days", "notes", "price_per_piece", "quantity", "tooling_cost"]);
+});
+
+test("a database refusal becomes a plain sentence and never leaks the database words", () => {
+  assert.match(quoteDatabaseMessage({ code: "42501" }), /assigned to your factory/);
+  assert.match(quoteDatabaseMessage({ code: "23514" }), /refused/);
+  for (const error of [{ code: "XX000" }, null, undefined]) {
+    const text = quoteDatabaseMessage(error);
+    assert.ok(!/relation|constraint|factory_quotes|violates/.test(text), text);
+  }
+});
