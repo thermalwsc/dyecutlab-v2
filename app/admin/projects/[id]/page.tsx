@@ -13,6 +13,7 @@ import ProjectFields from "../ProjectForm";
 import EstimatePanel from "./EstimatePanel";
 import ChangeNotesPanel from "./ChangeNotesPanel";
 import FactoryQuotePanel from "./FactoryQuotePanel";
+import ThreadPanel from "./ThreadPanel";
 
 export const metadata: Metadata = { title: "Project — DYE CUT LAB", robots: { index: false } };
 
@@ -49,7 +50,7 @@ export default async function ProjectDetail({
   const why = param(query, "why").slice(0, 240);
   const bannerCopy = {
     ...ADMIN_MESSAGES,
-    ...(why ? { estimate_failed: why, factory_quote_failed: why } : {}),
+    ...(why ? { estimate_failed: why, factory_quote_failed: why, thread_failed: why, correction_failed: why } : {}),
     ...(param(query, "ok") === "factory_quote_approved"
       ? {
           factory_quote_approved: `Quote approved. ${
@@ -94,6 +95,8 @@ export default async function ProjectDetail({
           </Panel>
 
           <FactoryQuotePanel project={{ id: project.id, product_type: project.product_type }} supabase={supabase} />
+
+          <ThreadPanel projectId={project.id} hasFactory={Boolean(project.factory_id)} supabase={supabase} />
 
           <ChangeNotesPanel projectId={project.id} supabase={supabase} />
 

@@ -5,6 +5,8 @@
    phrased as "what is on you right now" for a partner factory. No server-only
    imports so pages and components can share it. */
 
+import { nextStepZh } from "./factoryI18n.ts";
+
 export type FactoryNext = {
   headline: string;
   detail: string;
@@ -83,8 +85,11 @@ const FALLBACK: FactoryNext = {
   tone: "waiting",
 };
 
-export function factoryNextFor(status: string | null | undefined): FactoryNext {
-  return FACTORY_NEXT[(status || "").toLowerCase()] ?? FALLBACK;
+export function factoryNextFor(status: string | null | undefined, lang: "en" | "zh" = "en"): FactoryNext {
+  const english = FACTORY_NEXT[(status || "").toLowerCase()] ?? FALLBACK;
+  if (lang !== "zh") return english;
+  /* same tone (what is on whom) in the other language */
+  return { ...nextStepZh(status), tone: english.tone };
 }
 
 /* Brief fields shown to a factory, in reading order. Anything empty is hidden.
@@ -146,6 +151,13 @@ export const FACTORY_MESSAGES: Record<string, string> = {
   moved_shipping: "Marked as shipped. DYE CUT LAB and the customer can see the update.",
   change_recorded: "Change recorded. DYE CUT LAB keeps it so the team can learn from it.",
   change_invalid: "That note could not be saved. Check what you typed and try again.",
+  thread_sent: "Message sent. DYE CUT LAB reads it in English.",
+  thread_flagged: "Message sent. The translation may have changed a detail, so DYE CUT LAB will check it against your original.",
+  thread_untranslated: "Message sent, but the translation did not finish. DYE CUT LAB sees your original until it does.",
+  thread_failed: "That message could not be sent.",
+  correction_corrected: "Correction saved. The corrected words replace the translation, and the correction is kept to improve future translations.",
+  correction_flagged: "Correction saved, but it changed or dropped a number from the original. DYE CUT LAB will see a warning to check it.",
+  correction_failed: "That correction could not be saved.",
   quote_sent: "Quote sent. DYE CUT LAB will review it before anything goes to the customer.",
   quote_closed: "This project is no longer open for quotes.",
   quote_approved: "This project already has an approved quote.",

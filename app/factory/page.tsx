@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CONTACT } from "../../lib/contact";
-import { ROLE_LABELS } from "../../lib/auth/roles";
 import { requireRole } from "../../lib/auth/guard";
 import { getServerSupabase } from "../../lib/supabase/server";
 import { ArrowIcon } from "../updates/Icons";
 import { RoleCard, RoleShell } from "../updates/RoleShell";
 import { FACTORY_MESSAGES, factoryNextFor } from "../../lib/factoryWork";
+import { MESSAGES_ZH, portalText } from "../../lib/factoryI18n";
+import { getPortalLang } from "../../lib/portalLang";
 import { Banner, type SearchParams } from "../admin/ui";
 import { FactoryProjectCard, type FactoryProject } from "./FactoryProjectCard";
+import LanguageSwitch from "./LanguageSwitch";
 
 export const metadata: Metadata = {
   title: "Factory portal — DYE CUT LAB",
@@ -17,11 +19,14 @@ export const metadata: Metadata = {
 
 /* Landing page for partner factory accounts. The factory row is readable by its
    own members through RLS (factories_select_own_factory), so no service role is
-   needed here. */
+   needed here. The words come from lib/factoryI18n.ts: Chinese until the factory
+   picks English. */
 
 export default async function FactoryPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const query = await searchParams;
-  const { user, profile, role } = await requireRole(["factory"], { next: "/factory" });
+  const { user, profile } = await requireRole(["factory"], { next: "/factory" });
+  const lang = await getPortalLang();
+  const t = portalText(lang);
 
   const supabase = await getServerSupabase();
   const { data: factory } = profile?.factory_id
@@ -52,29 +57,32 @@ export default async function FactoryPage({ searchParams }: { searchParams: Prom
   const attention = projects.filter((p) => factoryNextFor(p.status).tone === "action");
   const waiting = projects.filter((p) => factoryNextFor(p.status).tone === "waiting");
   const finished = projects.filter((p) => factoryNextFor(p.status).tone === "done");
+  const who = profile?.full_name || user.email || "";
+  const copy = lang === "zh" ? { ...FACTORY_MESSAGES, ...MESSAGES_ZH } : FACTORY_MESSAGES;
 
   return (
     <RoleShell
-      badge={ROLE_LABELS[role]}
-      title={factoryName ? <>{factoryName}.</> : <>Factory portal.</>}
+      badge={t.role}
+      title={factoryName ? <>{factoryName}.</> : <>{t.portalTitle}</>}
       intro={
         factoryName
           ? projects.length === 0
-            ? `Signed in as ${profile?.full_name || user.email}. Work DYE CUT LAB sends to ${factoryName} will appear here.`
+            ? t.introLinked(who, factoryName)
             : attention.length > 0
-              ? `${attention.length === 1 ? "One project needs" : `${attention.length} projects need`} your attention.`
-              : "Nothing needs you right now. Here's where your projects stand."
-          : `Signed in as ${profile?.full_name || user.email}. No factory is linked to this account yet — ask DYE CUT LAB to set that up.`
+              ? t.introAttention(attention.length)
+              : t.introCalm
+          : t.introNoFactory(who)
       }
     >
-      <Banner params={query} copy={FACTORY_MESSAGES} />
+      <LanguageSwitch lang={lang} label={t.switchLabel} />
+      <Banner params={query} copy={copy} />
 
       {projects.length > 0 && (
-        <ul aria-label="Summary" className="mt-6 flex flex-wrap gap-2">
+        <ul aria-label={t.summary} className="mt-6 flex flex-wrap gap-2">
           {[
-            { label: "need you", count: attention.length, hot: true },
-            { label: "on the way", count: waiting.length, hot: false },
-            { label: "delivered", count: finished.length, hot: false },
+            { label: t.chipNeedYou, count: attention.length, hot: true },
+            { label: t.chipOnTheWay, count: waiting.length, hot: false },
+            { label: t.chipDelivered, count: finished.length, hot: false },
           ]
             .filter((chip) => chip.count > 0)
             .map((chip) => (
@@ -90,21 +98,20 @@ export default async function FactoryPage({ searchParams }: { searchParams: Prom
 
       {projects.length === 0 ? (
         <div className="mt-8 rounded-[28px] bg-[var(--dcl-lime-soft)] p-5 sm:p-8">
-          <h2 className="text-[clamp(20px,5.4vw,26px)] font-black tracking-[-0.04em]">Production jobs</h2>
-          <p className="mt-2 max-w-[52ch] text-[15px] leading-relaxed text-zinc-800">
-            Nothing assigned yet. When DYE CUT LAB sends you a project, the brief, files and status show up here.
-          </p>
+          <h2 className="text-[clamp(20px,5.4vw,26px)] font-black tracking-[-0.04em]">{t.productionJobs}</h2>
+          <p className="mt-2 max-w-[52ch] text-[15px] leading-relaxed text-zinc-800">{t.nothingAssigned}</p>
         </div>
       ) : (
         <div className="mt-8 grid gap-8">
           {attention.length > 0 && (
             <section aria-labelledby="attention-heading">
               <h2 id="attention-heading" className="text-[26px] font-black tracking-[-0.04em]">
-                Needs your <span className="rounded-[0.3em] bg-[var(--dcl-lime)] px-[0.2em]">attention</span>
+                {t.attentionA}
+                <span className="rounded-[0.3em] bg-[var(--dcl-lime)] px-[0.2em]">{t.attentionB}</span>
               </h2>
               <ul className="mt-4 grid gap-4 lg:grid-cols-2">
                 {attention.map((project) => (
-                  <FactoryProjectCard key={project.id} project={project} />
+                  <FactoryProjectCard key={project.id} project={project} lang={lang} />
                 ))}
               </ul>
             </section>
@@ -113,11 +120,11 @@ export default async function FactoryPage({ searchParams }: { searchParams: Prom
           {waiting.length > 0 && (
             <section aria-labelledby="waiting-heading">
               <h2 id="waiting-heading" className="text-[26px] font-black tracking-[-0.04em]">
-                On the way <span className="ml-1 text-[18px] text-zinc-400">{waiting.length}</span>
+                {t.onTheWay} <span className="ml-1 text-[18px] text-zinc-400">{waiting.length}</span>
               </h2>
               <ul className="mt-4 grid gap-4 lg:grid-cols-2">
                 {waiting.map((project) => (
-                  <FactoryProjectCard key={project.id} project={project} />
+                  <FactoryProjectCard key={project.id} project={project} lang={lang} />
                 ))}
               </ul>
             </section>
@@ -126,12 +133,12 @@ export default async function FactoryPage({ searchParams }: { searchParams: Prom
           {finished.length > 0 && (
             <details className="group rounded-[24px] border-2 border-zinc-200 p-4 sm:p-5">
               <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between text-[16px] font-extrabold [&::-webkit-details-marker]:hidden">
-                Delivered ({finished.length})
+                {t.delivered(finished.length)}
                 <span aria-hidden="true" className="text-[22px] leading-none transition-transform group-open:rotate-45">+</span>
               </summary>
               <ul className="mt-4 grid gap-4 lg:grid-cols-2">
                 {finished.map((project) => (
-                  <FactoryProjectCard key={project.id} project={project} />
+                  <FactoryProjectCard key={project.id} project={project} lang={lang} />
                 ))}
               </ul>
             </details>
@@ -140,19 +147,21 @@ export default async function FactoryPage({ searchParams }: { searchParams: Prom
       )}
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2 lg:items-start">
-        <RoleCard title="Your details on file" tone="white">
+        <RoleCard title={t.yourDetails} tone="white">
           <dl className="grid gap-3">
-            <Detail label="Factory" value={factoryName ?? "Not linked yet"} />
-            <Detail label="Contact on record" value={factory?.contact_name ?? "—"} />
-            <Detail label="Email on record" value={factory?.contact_email ?? user.email ?? "—"} />
-            <Detail label="Phone on record" value={factory?.phone ?? "—"} />
+            <Detail label={t.factory} value={factoryName ?? t.notLinked} />
+            <Detail label={t.contactOnRecord} value={factory?.contact_name ?? "—"} />
+            <Detail label={t.emailOnRecord} value={factory?.contact_email ?? user.email ?? "—"} />
+            <Detail label={t.phoneOnRecord} value={factory?.phone ?? "—"} />
           </dl>
           <p className="text-[13px] text-zinc-600">
-            Something wrong? Call or text {CONTACT.phoneDisplay} or email{" "}
+            {t.wrongBefore}
+            {CONTACT.phoneDisplay}
+            {t.wrongMid}
             <a href={`mailto:${CONTACT.email}`} className="font-bold text-black underline underline-offset-2">
               {CONTACT.email}
             </a>
-            .
+            {t.wrongAfter}
           </p>
         </RoleCard>
       </div>
@@ -161,7 +170,7 @@ export default async function FactoryPage({ searchParams }: { searchParams: Prom
         href="/"
         className="group mt-8 inline-flex h-14 items-center gap-4 rounded-full border-[3px] border-black bg-white pl-6 pr-5 text-[16px] font-extrabold text-black"
       >
-        Back to the site
+        {t.backToSite}
         <ArrowIcon className="h-5 w-5 transition-transform group-hover:translate-x-1" />
       </Link>
     </RoleShell>

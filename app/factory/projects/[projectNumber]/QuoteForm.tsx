@@ -22,7 +22,30 @@ function read(value: string) {
   return value.trim() && Number.isFinite(n) ? n : NaN;
 }
 
-export default function QuoteForm({ projectNumber, defaultQuantity }: { projectNumber: string; defaultQuantity: number | null }) {
+/* Plain words only (a client component cannot receive functions), picked by the page. */
+export type QuoteFormLabels = {
+  quantity: string;
+  price: string;
+  tooling: string;
+  toolingHint: string;
+  lead: string;
+  leadHint: string;
+  notes: string;
+  total: string;
+  totalNote: string;
+  send: string;
+  review: string;
+};
+
+export default function QuoteForm({
+  projectNumber,
+  defaultQuantity,
+  labels,
+}: {
+  projectNumber: string;
+  defaultQuantity: number | null;
+  labels: QuoteFormLabels;
+}) {
   const [quantity, setQuantity] = useState(defaultQuantity ? String(defaultQuantity) : "");
   const [price, setPrice] = useState("");
   const [tooling, setTooling] = useState("");
@@ -35,11 +58,11 @@ export default function QuoteForm({ projectNumber, defaultQuantity }: { projectN
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className={LABEL}>
-          Quantity (pieces)
+          {labels.quantity}
           <input name="quantity" required inputMode="numeric" autoComplete="off" value={quantity} onChange={(e) => setQuantity(e.target.value)} className={FIELD} />
         </label>
         <label className={LABEL}>
-          Price per piece (USD)
+          {labels.price}
           <input
             name="price_per_piece"
             required
@@ -52,25 +75,25 @@ export default function QuoteForm({ projectNumber, defaultQuantity }: { projectN
           />
         </label>
         <label className={LABEL}>
-          Tooling, one time (USD)
+          {labels.tooling}
           <input
             name="tooling_cost"
             inputMode="decimal"
             autoComplete="off"
-            placeholder="0.00, or empty if none"
+            placeholder={labels.toolingHint}
             value={tooling}
             onChange={(e) => setTooling(e.target.value)}
             className={FIELD}
           />
         </label>
         <label className={LABEL}>
-          Lead time (days)
-          <input name="lead_days" inputMode="numeric" autoComplete="off" placeholder="Production days" className={FIELD} />
+          {labels.lead}
+          <input name="lead_days" inputMode="numeric" autoComplete="off" placeholder={labels.leadHint} className={FIELD} />
         </label>
       </div>
 
       <label className={LABEL}>
-        Notes for DYE CUT LAB (optional)
+        {labels.notes}
         <textarea
           name="notes"
           rows={3}
@@ -80,19 +103,19 @@ export default function QuoteForm({ projectNumber, defaultQuantity }: { projectN
       </label>
 
       <div className="rounded-2xl bg-zinc-100 px-4 py-3">
-        <p className="text-[12px] font-bold uppercase tracking-[0.1em] text-zinc-600">Total</p>
+        <p className="text-[12px] font-bold uppercase tracking-[0.1em] text-zinc-600">{labels.total}</p>
         <p className="text-[24px] font-black tracking-[-0.03em]">{total === null ? "—" : money(total)}</p>
-        <p className="text-[12px] text-zinc-600">Quantity × price per piece + tooling. Shipping is not included.</p>
+        <p className="text-[12px] text-zinc-600">{labels.totalNote}</p>
       </div>
 
       <button
         type="submit"
         className="group flex min-h-[52px] w-full items-center justify-between rounded-full border-[3px] border-black bg-[var(--dcl-lime)] px-5 text-[15px] font-extrabold transition active:scale-[0.98] sm:w-auto sm:min-w-[280px]"
       >
-        Send quote
+        {labels.send}
         <ArrowIcon className="h-5 w-5 transition-transform group-hover:translate-x-1" />
       </button>
-      <p className="text-[12px] text-zinc-600">DYE CUT LAB reviews it before anything goes to the customer. Sending again replaces a quote that is still waiting.</p>
+      <p className="text-[12px] text-zinc-600">{labels.review}</p>
     </form>
   );
 }
