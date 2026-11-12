@@ -85,7 +85,10 @@ export default async function ProjectDetail({
       <div className="mt-4 grid gap-6 lg:grid-cols-[1.4fr_1fr] lg:items-start">
         <div className="grid gap-6">
           <Panel title="Details">
-            <form action={updateProject} className="grid gap-5">
+            {/* keyed by the stage: another panel can move the project (approving a quote moves it to Approved),
+                and these fields are uncontrolled, so without a new key they would keep showing the old stage
+                and Save changes would quietly move the project back */}
+            <form key={project.status ?? "none"} action={updateProject} className="grid gap-5">
               <input type="hidden" name="id" value={project.id} />
               <ProjectFields values={project} />
               <button type="submit" className={BTN}>
