@@ -2,7 +2,7 @@
 
 Custom packaging made simple. A customer describes an idea, DCL turns it into a factory-ready specification, a verified quote, payment, proof, production and delivery. This file is the engineering view of the 12-week plan the client sees (`F:\DYECUTLAB-Work\12-Week-Plan\index.html`). The task log is `F:\DYECUTLAB-Work\TaskLogHTML\index.html`.
 
-Last updated: Sun, Nov 1, 2026 (end of week 5).
+Last updated: Mon, Nov 9, 2026 (end of week 6).
 
 ---
 
@@ -84,7 +84,7 @@ Weeks are 25 h each, 300 h in total. Percentages are the share of a task that is
 | 3 | Project lifecycle and DICI chat fixes | In progress (about 96%) |
 | 4 | Customer workspace | In progress (about 72%) |
 | 5 | Quoting engine | Done (tried on sample prices; real prices wait for the client's table) |
-| 6 | Factory portal and admin | Not started |
+| 6 | Factory portal and admin | Built and tried with a test factory (90%); the real partner factory test is open |
 | 7 | Bilingual layer (English and Chinese) | Not started |
 | 8 | Payments | Not started |
 | 9 | Proofs, production and shipping | Not started |
@@ -92,7 +92,7 @@ Weeks are 25 h each, 300 h in total. Percentages are the share of a task that is
 | 11 | Private beta launch | Not started |
 | 12 | Observe, improve and plan next | Not started |
 
-Overall about 41% of the plan.
+Overall about 49% of the plan.
 
 ### Week 3 detail
 
@@ -111,7 +111,7 @@ Project page with a live progress tracker, files and messages (done: stage dates
 
 ### Weeks 5–12 (summary)
 - **5 Quoting engine (done):** estimate from the project's quantity, finishes and tooling (shipping is added last, outside the instant estimate, with our margin); always labeled as an estimate; numbered quote versions per project that the team shows to the customer; a Pricing screen for the team; a one-page estimate PDF. The customer estimate card is behind `ESTIMATES_IN_APP` (off) until the client's real prices are entered.
-- **6 Factory portal and admin:** factory submits its quote, DCL approves before the customer sees it; record what the factory changed and why; test with the partner factory.
+- **6 Factory portal and admin (built and tried end to end with a test factory account on the live system):** the factory sends a quote from its portal; the team reviews it, approves or rejects with a reason, and approving saves a verified quote (the factory's price plus our margin, shipping added last) hidden from the customer until the team shows it; the factory records what it changed and why, never edited or deleted; the team gets an email when a quote arrives. Still open: the real test with a partner factory, which needs one from the client.
 - **7 Bilingual layer:** messages translated both ways keeping specifications exact, original always viewable, factory portal in Chinese, corrections logged.
 - **8 Payments:** secure checkout on an approved quote, automatic move to Proof once paid, receipts, test mode first.
 - **9 Proofs, production and shipping:** factory uploads proofs, customer approves, production milestones and QC photos, tracking, notifications.
