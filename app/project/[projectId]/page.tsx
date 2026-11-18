@@ -24,6 +24,7 @@ import { trackerSteps } from "../../../lib/stageDates";
 import { latestMessage, toPreview } from "../../../lib/messagePreview";
 import { describeCustomerVersion, type CustomerQuoteVersion } from "../../../lib/quoteVersions";
 import { ESTIMATES_IN_APP } from "../../../lib/siteFlags";
+import PaymentCard from "./PaymentCard";
 import {
   canShowThumbnail,
   downloadHref,
@@ -1346,6 +1347,10 @@ export default function ProjectPage() {
               )}
             </section>
           )}
+
+          {/* PAYMENT (shows only once the server has payments switched on) */}
+
+          <PaymentCard projectId={projectId} />
 
           {/* PROJECT BRIEF */}
 
