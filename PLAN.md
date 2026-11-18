@@ -86,7 +86,7 @@ Weeks are 25 h each, 300 h in total. Percentages are the share of a task that is
 | 5 | Quoting engine | Done (tried on sample prices; real prices wait for the client's table) |
 | 6 | Factory portal and admin | Built and tried with a test factory (90%); the real partner factory test is open |
 | 7 | Bilingual layer (English and Chinese) | Done (tried live with realistic factory wording) |
-| 8 | Payments | Not started |
+| 8 | Payments (Square) | Not started (50% deposit then 50% before shipping; starts in Square's sandbox, live waits for the client's verified account) |
 | 9 | Proofs, production and shipping | Not started |
 | 10 | Testing and launch readiness | Not started |
 | 11 | Private beta launch | Not started |
@@ -113,7 +113,7 @@ Project page with a live progress tracker, files and messages (done: stage dates
 - **5 Quoting engine (done):** estimate from the project's quantity, finishes and tooling (shipping is added last, outside the instant estimate, with our margin); always labeled as an estimate; numbered quote versions per project that the team shows to the customer; a Pricing screen for the team; a one-page estimate PDF. The customer estimate card is behind `ESTIMATES_IN_APP` (off) until the client's real prices are entered.
 - **6 Factory portal and admin (built and tried end to end with a test factory account on the live system):** the factory sends a quote from its portal; the team reviews it, approves or rejects with a reason, and approving saves a verified quote (the factory's price plus our margin, shipping added last) hidden from the customer until the team shows it; the factory records what it changed and why, never edited or deleted; the team gets an email when a quote arrives. Still open: the real test with a partner factory, which needs one from the client.
 - **7 Bilingual layer (done):** a private team and factory thread where the team writes English and the factory reads Chinese, and the other way round, translated by AI; every number is checked after translation and a change shows a warning with the original beside it; the original is always one tap away; the factory portal is Chinese by default with an English switch; every translation can be corrected and the corrections are kept (before, after, kind, note) to improve future translations. Not planned: a Chinese speaker to verify translations (the number check and the correction log stand in for it).
-- **8 Payments:** secure checkout on an approved quote, automatic move to Proof once paid, receipts, test mode first.
+- **8 Payments (Square):** the client chose Square instead of Stripe. Secure checkout on an approved quote with the client's chosen terms: a 50% deposit first (the project moves to Proof once it clears) and the other 50% before shipping. Receipts and payment history, built in Square's sandbox first (no real money). Live payments need the client's verified Square account and his live credentials (application ID, access token, location ID, kept out of chat and the repository). The checkout is built so the payment provider can be swapped later.
 - **9 Proofs, production and shipping:** factory uploads proofs, customer approves, production milestones and QC photos, tracking, notifications.
 - **10 Testing and launch readiness:** a separate test database (moved from week 4: all current data is test data, so it waits until real customers are in); automated tests for sign-in, data security, stages and payments; security review and error monitoring; full test order; release.
 - **11 Private beta:** first real customers and the partner factory, beta dashboard, daily fixes.
@@ -137,7 +137,7 @@ Multiple factories with RFQs, bids and comparison; white label for factories, br
 - Done: the OpenAI monthly cap ($25, alert at $15) and a payment method are set.
 - Client decisions for the quoting engine (Oct 29): shipping is added last and is left out of the instant estimate ("freight not included"), and when it is added it carries our margin like everything else. The engine already works this way.
 - To confirm against the blueprint (v0.3, `F:\DYECUTLAB-Work\DYE_CUT_LAB_DICI_Pitch_Blueprint.pdf`): (1) **Reorder** (journey step 14) is not planned; today delivered projects only get a "Start a similar project" link. (2) The blueprint puts the English and Chinese layer in weeks 1–2; this plan schedules it in week 7. The blueprint's factory change notes (page 9: what a factory changed, and why) are already in week 6, and its beta measurements (page 19) are in the week 11 beta dashboard.
-- By week 5: factory pricing data and margin rules. By week 6: a partner factory contact. By week 8: a payment account (for example Stripe) and the client's choice of payment method. By week 10: the first beta customers.
+- By week 5: factory pricing data and margin rules. By week 6: a partner factory contact. By week 8: the client's verified Square account; building starts in the sandbox without it. By week 10: the first beta customers.
 
 ---
 
