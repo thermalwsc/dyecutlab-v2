@@ -24,6 +24,7 @@ import { buildStageEmail } from "./stageEmail";
 import { renderEmail } from "./emailLayout";
 import { CONTACT } from "./contact";
 import { type FactoryQuoteAlertInput, buildFactoryQuoteAlert } from "./factoryQuoteAlert";
+import { type PaymentReceiptInput, type StaffPaymentAlertInput, buildPaymentReceipt, buildStaffPaymentAlert } from "./paymentEmail";
 
 const BREVO_API_BASE = "https://api.brevo.com/v3";
 const BREVO_TIMEOUT_MS = 8000;
@@ -541,6 +542,87 @@ export async function sendStaffFactoryQuoteEmail(input: FactoryQuoteAlertInput &
     return { status: "sent" };
   } catch (error) {
     console.error("BREVO FACTORY QUOTE EMAIL ERROR:", error);
+    return { status: "failed", detail: errorMessage(error) };
+  }
+}
+
+/* Customer receipt when a payment is received. It is about their own order, so it needs no marketing
+   consent. The words come from lib/paymentEmail.ts; nothing here undoes the payment if it fails. */
+export async function sendCustomerPaymentEmail(input: PaymentReceiptInput & { to: string }): Promise<ChannelResult> {
+  const { apiKey, senderEmail, senderName } = getEmailConfig();
+
+  if (!apiKey) {
+    return { status: "skipped", detail: "BREVO_API_KEY is not configured." };
+  }
+
+  if (!senderEmail) {
+    return { status: "skipped", detail: "BREVO_SENDER_EMAIL is not configured." };
+  }
+
+  const mail = buildPaymentReceipt(input);
+  const { html, text } = renderEmail({
+    eyebrow: "Your payment",
+    greeting: mail.greeting,
+    headline: mail.headline,
+    intro: mail.detail,
+    rows: mail.rows,
+    cta: { label: mail.ctaLabel, url: mail.projectUrl },
+    footer: "You are getting this because you paid for a project at DYE CUT LAB. Questions? Just reply to this email.",
+  });
+
+  try {
+    await brevoPost("/smtp/email", apiKey, {
+      sender: { name: senderName, email: senderEmail },
+      replyTo: { name: "DYE CUT LAB", email: CONTACT.email },
+      to: [{ email: input.to }],
+      subject: mail.subject,
+      htmlContent: html,
+      textContent: text,
+      tags: ["customer_payment_receipt"],
+    });
+
+    return { status: "sent" };
+  } catch (error) {
+    console.error("BREVO CUSTOMER PAYMENT EMAIL ERROR:", error);
+    return { status: "failed", detail: errorMessage(error) };
+  }
+}
+
+/* Team alert when a customer pays. The words come from lib/paymentEmail.ts. */
+export async function sendStaffPaymentEmail(input: StaffPaymentAlertInput & { projectUrl: string }): Promise<ChannelResult> {
+  const { apiKey, senderEmail, senderName } = getEmailConfig();
+  const { email: staffEmail } = getStaffDestinations();
+
+  if (!apiKey) {
+    return { status: "skipped", detail: "BREVO_API_KEY is not configured." };
+  }
+
+  if (!senderEmail) {
+    return { status: "skipped", detail: "BREVO_SENDER_EMAIL is not configured." };
+  }
+
+  const alert = buildStaffPaymentAlert(input);
+  const { html, text } = renderEmail({
+    eyebrow: `Hi ${CONTACT.personName} — payment received`,
+    headline: alert.headline,
+    rows: alert.rows,
+    cta: { label: "Open it in the team workspace", url: input.projectUrl },
+    footer: alert.footer,
+  });
+
+  try {
+    await brevoPost("/smtp/email", apiKey, {
+      sender: { name: senderName, email: senderEmail },
+      to: [{ email: staffEmail }],
+      subject: alert.headline,
+      htmlContent: html,
+      textContent: text,
+      tags: ["payment_received_staff"],
+    });
+
+    return { status: "sent" };
+  } catch (error) {
+    console.error("BREVO STAFF PAYMENT EMAIL ERROR:", error);
     return { status: "failed", detail: errorMessage(error) };
   }
 }
