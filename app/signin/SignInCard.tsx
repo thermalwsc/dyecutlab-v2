@@ -145,7 +145,12 @@ export default function SignInCard({ next, error }: { next: string; error: strin
     setNotice(null);
     const { error: oauthError } = await getBrowserSupabase().auth.signInWithOAuth({
       provider,
-      options: { redirectTo: callbackUrl() },
+      options: {
+        redirectTo: callbackUrl(),
+        /* Always show Google's account picker. Without it Google signs straight in with the account it
+           used last, so someone with a customer and a factory or admin account could never choose. */
+        ...(provider === "google" ? { queryParams: { prompt: "select_account" } } : {}),
+      },
     });
     /* On success the browser is already leaving for Google / Apple. */
     if (oauthError) {
